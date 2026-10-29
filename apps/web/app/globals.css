@@ -1,0 +1,16 @@
+@import 'tailwindcss';
+
+/* Tailwind v4 skips symlinked workspace packages; scan their sources explicitly. */
+@source '../../../packages/ui/src';
+@source '../../../packages/wedding-features/src';
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background-color: #f7f1ea;
+  color: #2b2118;
+  -webkit-font-smoothing: antialiased;
+}

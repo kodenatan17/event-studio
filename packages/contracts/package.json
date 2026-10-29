@@ -1,0 +1,24 @@
+{
+  "name": "@undangan/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/manifest.ts",
+    "./world": "./src/world.ts",
+    "./fixtures/demo-wedding": "./fixtures/demo-wedding.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@undangan/config": "workspace:*",
+    "typescript": "~6.0.3",
+    "vitest": "^4.1.12"
+  },
+  "dependencies": {
+    "zod": "^4.6.7"
+  }
+}

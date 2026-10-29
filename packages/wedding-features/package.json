@@ -1,0 +1,31 @@
+{
+  "name": "@undangan/wedding-features",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@undangan/contracts": "workspace:*",
+    "@undangan/ui": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.18",
+    "@types/react-dom": "~19.2.7",
+    "@undangan/config": "workspace:*",
+    "react": "19.2.9",
+    "react-dom": "19.2.9",
+    "typescript": "~6.0.3",
+    "vitest": "^4.1.12"
+  }
+}

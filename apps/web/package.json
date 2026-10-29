@@ -1,0 +1,33 @@
+{
+  "name": "@undangan/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "next typegen && tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@undangan/contracts": "workspace:*",
+    "@undangan/ui": "workspace:*",
+    "@undangan/wedding-features": "workspace:*",
+    "@undangan/world-engine": "workspace:*",
+    "next": "16.4.3",
+    "react": "19.2.9",
+    "react-dom": "19.2.9",
+    "server-only": "0.0.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^22.20.5",
+    "@types/react": "~19.2.18",
+    "@types/react-dom": "~19.2.7",
+    "@undangan/config": "workspace:*",
+    "tailwindcss": "^4.3.3",
+    "typescript": "~6.0.3",
+    "vitest": "^4.1.12"
+  }
+}

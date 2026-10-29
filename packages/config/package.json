@@ -1,0 +1,16 @@
+{
+  "name": "@undangan/config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./tsconfig.base.json": "./tsconfig.base.json",
+    "./eslint": "./eslint.base.mjs",
+    "./prettier.json": "./prettier.json"
+  },
+  "peerDependencies": {
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "typescript-eslint": "^8.72.1"
+  }
+}

@@ -1,0 +1,15 @@
+# Spec and docs: never reformat
+*.md
+.claude/
+
+# Generated / lockfiles
+pnpm-lock.yaml
+node_modules/
+.next/
+.turbo/
+out/
+coverage/
+playwright-report/
+test-results/
+blob-report/
+next-env.d.ts

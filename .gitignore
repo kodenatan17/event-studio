@@ -1,0 +1,24 @@
+# dependencies
+node_modules/
+
+# build / tooling output
+.next/
+out/
+.turbo/
+*.tsbuildinfo
+next-env.d.ts
+coverage/
+
+# Playwright
+playwright-report/
+test-results/
+blob-report/
+playwright/.cache/
+
+# env — never commit real values
+.env*
+!.env.example
+
+# OS / editor
+.DS_Store
+*.log
