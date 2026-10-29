@@ -18,4 +18,4 @@ Route: bugfix
 Bug: <request>$ARGUMENTS</request>
 
 Route: scout(diagnose — root cause with file:line evidence) → coder(fix, minimal change) → reviewer.
-Add qa only if business logic changed. If scout says the cause is server-side, stop and report.
+Add qa only if business logic changed. If scout says the cause is in an external service (Supabase, R2/CDN), the browser/GPU or a 3D asset, stop and report.

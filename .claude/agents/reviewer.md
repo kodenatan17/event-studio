@@ -16,12 +16,20 @@ model: opus
 
 Validate — never fix. Review only the changed files and what they touch.
 
-Check, in order: correctness · error handling · consistency with existing patterns · integration impact (DI, routing, API contract) · unnecessary complexity.
+Check, in order: correctness · error handling · consistency with existing patterns · integration impact (contracts, routes, migrations/RLS, package boundaries) · unnecessary complexity.
 
-Spec: behavior matches the cited `specs.md` rule IDs; rule changes come with tests named by rule ID.
-Security (always for auth/token/network/storage/download/logging code; full audit in **security** mode, load `patricia-security-boundaries`): token storage in Hive and the single 401 refresh path, gallery signature check (`galleryId|sha|fileSize`, ECDSA) intact, no hardcoded secrets/URLs, nothing new in `.env` files (they ship in the `.tpk`), no logging of tokens/signed URLs, MQTT stays on TLS, no new certificate-validation bypass (`onBadCertificate`/`badCertificateCallback` returning true — the existing one in `mqtt_service.dart` is OPEN-08, flag HIGH when touched), build SDK ≥ Flutter 3.47.8 (SEC-03), AVPlay/stream controllers disposed. Backend authorization and dashboard RBAC are out of scope.
+Spec: behavior matches the cited `FR-xx` acceptance criteria / spec sections; changed behavior comes with tests named by ID; nothing out of V1 scope slipped in; no real wedding/guest data in production paths.
 
-New interfaces: derived from the concrete implementation, registered in DI, compiling.
+Security (always for auth/session/token/RSVP/guestbook/upload/manifest/logging code; full audit in **security** mode, load `wedding-security-boundaries`):
+- tenant isolation: membership/role checked server-side, RLS on every tenant table, `wedding_id` from session, `404` on cross-tenant access;
+- invite tokens and guest sessions per `api-contracts.md` §5.3 (hash at rest, clean redirect, cookie flags, revocation re-checked on writes, never logged);
+- public manifest and public endpoints leak no PII, token hashes, draft media, signed URLs or private object keys;
+- Zod validation on every write; CSRF/origin check on cookie-authenticated mutations; rate limits on token exchange, RSVP, guestbook, upload;
+- guestbook rendered as text (no XSS); user URLs `https:` only, `javascript:`/`data:` rejected;
+- uploads: byte-sniffed type, ≤8 MB, JPEG/PNG/WebP only (no SVG), EXIF stripped, short-lived scoped presign;
+- service-role and R2 keys server-only; no secrets in `NEXT_PUBLIC_*` or committed `.env*`; logs redact tokens, cookies, auth headers, names, notes and messages.
+
+3D viewer: resources and listeners disposed on scene switch, stale transitions cancelled, each hotspot has an accessible HTML control, 2D fallback reachable, no webcam request, audio muted by default.
 
 Output (≤25 lines):
 ```

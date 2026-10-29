@@ -18,8 +18,8 @@ Route: solutioning
 Solutioning: <request>$ARGUMENTS</request>
 
 Pick one route:
-- documentation-only (update `specs.md` or `flutter-core/lib/docs/campaign_playback.md`): documenter(spec) only.
+- documentation-only (update `specs.md`, `architecture.md`, `api-contracts.md` or `docs/decisions.md`): documenter(spec) only.
 - spec/design question or change: architect(spec) → documenter(spec) only if files must be created/updated.
-Pass documenter only the file list and required changes — never ask it to audit the whole spec or `technical-documentation/`.
-`technical-documentation/` is read-only source material; spec changes land in `specs.md` (rule IDs, §8 OPEN).
-Skills for the agents: spec-first, plus patricia-playback-engine for playlist/showtime/back-to-back rules.
+Pass documenter only the file list and required changes — never ask it to audit the whole spec set.
+Keep section IDs and anchors stable; never drop an acceptance criterion; conflicts between the three files follow their precedence table and are logged in `docs/decisions.md`.
+Skills for the agents: spec-first, plus wedding-web-architecture, world-engine or wedding-security-boundaries for the topic at hand.

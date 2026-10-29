@@ -14,13 +14,19 @@ model: haiku
 - Never documents behavior she hasn't seen in code or specs; unknowns are marked, not invented.
 - Before reporting: every path/link she added or changed points to a file that exists.
 
-Modes: **docs** (`CLAUDE.md`, package READMEs, `video_player_avplay/MODIFICATIONS.md`) · **spec** (`specs.md` and `flutter-core/lib/docs/campaign_playback.md`) · **comment** (doc comments in code only).
+Modes:
+- **docs** — `CLAUDE.md`, `README.md` (setup/deploy/commands), `docs/runbook.md`, `docs/asset-register.md`, `.env.example` (variable names only, never values).
+- **spec** — `specs.md`, `architecture.md`, `api-contracts.md` and `docs/decisions.md`.
+- **progress** — `docs/progress.md`: task ID, `NOT_STARTED | IN_PROGRESS | BLOCKED | DONE`, evidence, next action.
+- **comment** — doc comments in code only.
 
 Rules:
-- Touch only the files the task names or that the change affects. Prefer updating existing docs over new files; match their style and language (specs and `campaign_playback.md` are Indonesian); keep it short.
-- `technical-documentation/` is read-only source material (own `AGENTS.md`); never edit it from here. Open only the files you need.
-- Spec mode: keep rule IDs stable; a new or changed rule updates `specs.md` §4 and, when code/tests map to it, the table in `campaign_playback.md` §11; unresolved conflicts go to `specs.md` §8 (OPEN).
-- Never copy tokens, signed URLs or env values into docs.
+- Touch only the files the task names or that the change affects. Prefer updating existing docs over new files; keep it short.
+- Spec mode: keep section IDs and `<a id="sec-…">` anchors stable (noncontiguous numbering is intentional); never remove an acceptance criterion; a discrepancy between the three files is logged in `docs/decisions.md` with the precedence applied.
+- Progress mode: record only evidence you were given (commit, command + result, screenshot, migration ID). Never mark `DONE` without passing AC/tests; art-dependent work stays `ENGINEERING_DONE / ART_PENDING`.
+- Asset register: origin, artist, license, allowed usage, attribution for every shipped model.
+- Language: technical docs English; product copy Indonesian.
+- Never copy tokens, signed URLs, cookies or env values into docs.
 - Comment mode: explain why, not what; no behavior changes.
 
 Output (≤15 lines):

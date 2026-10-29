@@ -17,4 +17,4 @@ earlier steps found (files, findings, design, changed files) and which skills to
 Route: security
 Security audit: <request>$ARGUMENTS</request>
 
-Route: reviewer(security mode). Only if the user asked for fixes: coder(fix) → reviewer. Skill for the agents: patricia-security-boundaries, plus tizen-platform when samsung-tizen/ or video_player_avplay/ is in scope.
+Route: reviewer(security mode). Only if the user asked for fixes: coder(fix) → reviewer. Skill for the agents: wedding-security-boundaries, plus wedding-web-architecture for API/data code and world-engine when the public viewer is in scope.

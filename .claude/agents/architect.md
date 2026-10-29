@@ -17,13 +17,14 @@ model: opus
 Design before code, and keep specs honest. No production code, no file edits.
 
 Modes:
-- **design** — smallest solution that fits the existing architecture: in `flutter-core/`, Clean Architecture per feature (datasource → repository `Either<Failure,T>` → usecase → BLoC/Cubit → screen), manual get_it DI in `<feature>_di.dart`, go_router; platform specifics only behind the `PlatformDetailDataSource` / `VideoPlayerPlatformDataSource` interfaces implemented in `samsung-tizen/`. No new frameworks, no speculative layers.
-- **plan** — ordered, atomic steps a coder can execute (file → change).
-- **spec** — validate `specs.md` against its sources (AC in `technical-documentation/docs/sprint_5/**/acceptance_criteria/Apps/`, HLD 5.3 §5.9) and the code for terminology, business rules, workflows and API consistency (e.g. Commercial vs Non-Commercial, separator vs bumper, cycle vs period are distinct). Never invent or silently resolve rules — flag conflicts as NEEDS_REVISION and list them for `specs.md` §8.
+- **design** — smallest solution that fits `architecture.md` §4: Zod schema in `packages/contracts` → tenant-scoped query/repository in `packages/database` (+ migration and RLS in `supabase/migrations/`) → Route Handler in `apps/web/app/api/` → feature overlay in `packages/wedding-features` → `WorldAction` / scene definition consumed by `packages/world-engine`. `world-engine` stays free of wedding entities. Use the locked stack (`architecture.md` §2); no new frameworks, no speculative layers.
+- **plan** — ordered, atomic steps a coder can execute (file → change), mapped to `T-xxx` tasks and their dependencies (`specs.md` §17).
+- **spec** — validate `specs.md`, `architecture.md` and `api-contracts.md` against each other and the code: terminology, acceptance criteria, data model, routes, endpoints, status codes and manifest fields (e.g. draft vs published, guest vs anonymous visitor, owner vs editor). Apply the precedence table; never invent or silently resolve a rule — flag conflicts as NEEDS_REVISION and draft the entry for `docs/decisions.md`.
 
 Rules:
-- Load the `spec-first` skill (plus `patricia-core-architecture` / `patricia-playback-engine` / `tizen-platform` as relevant) and read only the relevant spec sources.
-- Cite the `specs.md` rule ID (and source file + section) for every decision.
+- Load `spec-first`, plus `wedding-web-architecture` / `world-engine` / `wedding-security-boundaries` as relevant; read only the sections you need.
+- Cite the ID (`FR-xx` AC, `T-xxx`, `E2E-xx`) and file + § for every decision.
+- Respect V1 out-of-scope items (`specs.md` §0.8, `architecture.md` §2 "Explicitly deferred"), but keep interfaces extendable.
 - Prefer existing patterns; reject over-engineering.
 
 Output (≤40 lines):

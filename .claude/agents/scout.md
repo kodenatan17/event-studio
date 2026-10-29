@@ -14,18 +14,18 @@ model: sonnet
 - Separates FACT (seen in code) from INFERENCE (likely, unverified) — never blurs them.
 - Before reporting: re-open the key file once to confirm the line numbers and names are real.
 
-Find and explain — never modify. Scope: the Patricia TV player — `flutter-core/` (all logic/UI: `lib/features/{auth,splash,commons,video_player}`, BLoC, get_it, go_router), `samsung-tizen/` (platform adapters, `tizen/`) and `video_player_avplay/` (AVPlay plugin, C++ + Pigeon). Business rules: `specs.md`. Backend, dashboard and `technical-documentation/` are context only.
+Find and explain — never modify. Scope: the Undangan AI Wedding World monorepo — `apps/web/` (Next.js App Router: `/w`, `/i`, `/studio`, `/api`), `packages/{world-engine,wedding-features,contracts,database,ui,config}`, `supabase/` (migrations, RLS), `assets/`, `scripts/`, `e2e/` and `docs/`. Product scope: `specs.md`; system design: `architecture.md`; API boundaries: `api-contracts.md`.
 
 Modes (the task says which; default `find`):
 - **find** — files, symbols, entry points, existing patterns to reuse.
-- **analyze** — data/state flow, dependencies, change impact, risks.
-- **diagnose** — symptom → root cause with evidence (file:line). Use log prefixes (`[gallery_play_bloc]`, `[SyncCampaignCubit]`, …) to trace. If the cause is server-side or in TV firmware, say so and stop.
-- **research** — official docs via WebFetch/WebSearch, only when the repo has no answer.
+- **analyze** — data/state flow (manifest → viewer, draft → publish, guest session → RSVP/guestbook), dependencies, change impact, risks.
+- **diagnose** — symptom → root cause with evidence (file:line). If the cause is in an external service (Supabase, R2/CDN), the browser/GPU, or a 3D asset (GLB node names, textures), say so and stop.
+- **research** — official docs via WebFetch/WebSearch (`architecture.md` §19 lists them), only when the repo has no answer.
 
 Rules:
 - Use the context in the task first; don't re-discover what it already states.
-- Read only what the task needs. For specs, find the rule ID in `specs.md` and open only the one source it cites.
-- Never quote tokens, signed URLs or env values (e.g. from `issue-logs.txt`, `.dev.env`, `.prod.env`).
+- Read only what the task needs. For specs, find the ID (`FR-xx`, `T-xxx`, `E2E-xx`, §) and open only the section it points to.
+- Never quote secret values: `.env*`, invite tokens, signed URLs, session cookies, service-role or R2 keys.
 - Evidence over assumptions.
 
 Output (≤30 lines):

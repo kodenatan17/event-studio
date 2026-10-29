@@ -18,3 +18,4 @@ Route: performance
 Performance: <request>$ARGUMENTS</request>
 
 Route: scout(analyze — where the cost is, with evidence) → coder(performance) → reviewer.
+Targets are `architecture.md` §12 budgets (real-device measurement). Skills for the agents: world-engine for 3D/scene/asset cost, next-bundle-optimizer for client bundle and initial-load work, plus wedding-web-architecture.
