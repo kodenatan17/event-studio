@@ -1,6 +1,6 @@
 # Decisions — Undangan AI Wedding World
 
-> **Updated:** 2026-10-29
+> **Updated:** 2026-10-30
 > **Scope:** records version choices and deviations or clarifications where the spec set is silent or inconsistent. Precedence follows `specs.md` (Documentation map and §0): `specs.md` for product scope, `architecture.md` for system design, `api-contracts.md` for API boundaries. No acceptance criterion is dropped.
 > **Spec files are not edited here.** Each entry names the section that should be updated later in `specs.md`, `architecture.md` or `api-contracts.md`. Those files are the user's work in progress.
 
@@ -217,7 +217,7 @@ Exact versions are recorded in `pnpm-lock.yaml`.
 
 **Decision:** baseline headers until T-603:
 - `script-src 'self' 'unsafe-inline'`, plus `'unsafe-eval'` in development only.
-- `connect-src 'self'`.
+- `connect-src 'self' blob:` (amended by D-024).
 - `Permissions-Policy: camera=(), microphone=(), geolocation=()`.
 
 Nonce-based CSP and HSTS arrive with T-603. `/i/[slug]` sends `no-referrer` (T-303).
@@ -279,6 +279,7 @@ Nonce-based CSP and HSTS arrive with T-603. `/i/[slug]` sends `no-referrer` (T-3
 - Their origin and license are not recorded yet. Ask the user before any of them, or a model derived from them, ships.
 - Planned once Higgsfield credits exist: couple models (multi-view image→3D with rigging, idle/walk) from `pengantin-adat-jawa.png`; 5 avatar presets from `avatar-customize.png`; props from `pelataran-adat-jawa.png`. All stay `ART_PENDING` with an entry in `docs/asset-register.md` (not created yet).
 - `architecture.md` §4.2 places source/reference art under `assets/source/`. Moving `apps/assets/` there is a user decision and has not been done.
+- Update 2026-10-30: the joglo pack moved to `assets/source/joglo-interior/` (D-025). `apps/assets/` is still unmoved. The living-room model amends this entry's "primitive blockout" scope (D-023).
 
 ---
 
@@ -316,10 +317,164 @@ Nonce-based CSP and HSTS arrive with T-603. `/i/[slug]` sends `no-referrer` (T-3
 
 **Decision:** the primitive `blockout` template is styled after the reference: gapura with janur kuning, mandala pavement, lotus ponds, plumeria, joglo pendopo, warm sunset.
 - Entrance = gapura.
-- Living room = dalem with gebyok.
+- Living room = dalem with gebyok. (Amended 2026-10-30: the living-room scene now renders a GLB, see D-023. The primitive is kept for the other scenes.)
 - Wedding garden = pelataran with akad canopy and photo-booth arch.
 - Reception hall = joglo pendopo with pelaminan.
 
 The palette `jawa-sunset` and lighting `warm-sunset` are hard-wired in the blockout for now. Passing the manifest `theme.paletteId` and `lightingId` to the engine is deferred to FR-10 / T-502. The blockout stays prototype-only (D-008).
 
 **Spec impact:** none now. `specs.md` FR-10 and T-502 cover the theme wiring when it is built.
+
+---
+
+## D-023 — Living room renders a GLB from the joglo pack
+
+**Status:** Accepted 2026-10-30 (user request). Art stays `ENGINEERING_DONE / ART_PENDING` until art sign-off (D-025).
+
+**Context:** T-004 needs a placeholder Living Room. D-019 and D-022 limit Milestone 0 to procedural primitive blockouts. `architecture.md` §8.5 (line 361) expects Blender-authored GLBs with named nodes. The user supplied their own procedural asset pack (D-025) and asked for its living-room model to be used.
+
+**Decision:**
+- Served file: `apps/web/public/templates/joglo/1.0.0/living-room.glb`, a copy of `assets/source/joglo-interior/models/joglo_living_room_mobile_optimized.glb`. glTF 2.0, no extensions, 1,051,008 B raw / 472,628 B gzip, 35 nodes, 10,253 triangles, 5 embedded PNG textures (teak grain, dark and light teak, stone tiles, batik kawung), PBR materials. Y-up, meters, front +Z.
+- Budget: within the per-scene aim in `architecture.md` §12 (3–8 MB, line 408).
+- URL: comes from the trusted code-side catalog `packages/world-engine/src/templates/blockout.ts` (`kind: 'gltf'` layout). The manifest `assetUrl` is still never fetched. D-008 governs manifest URLs. This same-origin catalog path is not a manifest URL.
+- Loader: plain three `GLTFLoader` in `packages/world-engine/src/scenes/GltfScene.tsx`. No Draco, Meshopt or KTX2 decoders. No Drei (D-018). A load failure resolves to `LOAD_FAILED`, then `sceneFailed(reqId, 'ASSET_LOAD_FAILED')` → ERROR panel (D-017).
+- Scope: only `living-room` uses the GLB. Entrance, garden and hall remain the Javanese primitive blockout (D-022).
+- Node mapping (manifest ID → GLB node):
+  - `HS_STORY` → `STORY_BOOK__HS_STORY_BOOK`
+  - `HS_GALLERY_0n` → `GALLERY_0n__HS_GALLERY_01` (n = 1..6)
+  - `PORTAL_GARDEN_DOOR` → `HS_PORTAL_WEDDING_GARDEN`
+  - `PORTAL_HALL_DOOR` → `HS_PORTAL_RECEPTION_HALL`
+  - Back to entrance: an engine-defined invisible trigger strip along the open +Z edge. It is not a GLB node.
+- Colliders: scene-config obstacles, the front chair, wayang, gamelan, gebyok, 4 saka guru umpak (0.56 m), 8 perimeter post bases (0.38 m) and 4 vases.
+- Spawns (floor coordinates, meters): `SPAWN_ENTRY` / `FROM_ENTRANCE` (0, 4.05), `FROM_GARDEN` (−3.9, −4.0), `FROM_HALL` (3.9, −4.0).
+- Disposal: the parsed GLTF stays in the loader cache. Geometry and texture GPU memory are freed on unmount and re-uploaded on re-entry. `data-gl-geometries` returns to baseline.
+- `PHOTO_DISPLAY_MESH` keeps a placeholder material. CMS photo textures belong to T-202 and T-107.
+- Caching: served with `Cache-Control: max-age=0` (revalidate), because the path is versioned but not content-hashed. Content-hashed immutable caching is deferred to T-504 (`architecture.md` §11.3).
+
+**Discrepancies logged (precedence applied):**
+- `architecture.md` §8.5 requires Blender-authored models. This GLB is generated by `assets/source/joglo-interior/build_joglo_interior.py` (Python). Whether Blender was used is not recorded. Precedence: the user request governs for the MVP, and the model stays `ART_PENDING`.
+- D-019 and D-022 limit Milestone 0 to primitive blockouts. This entry is the exception for the living-room scene only.
+- The GLB node names do not follow D-003 (`PORTAL_<ID>`) or D-002 (`HS_EVENT_*`). The catalog mapping above bridges them.
+
+**Spec impact:**
+- `architecture.md` §8.5 — owner to confirm the Blender-authored rule, and whether the GLB node naming is adopted.
+- `api-contracts.md` §7.1 — document the `gltf` catalog kind and the same-origin path rule.
+- OPEN: D-008 rejects `blockout` for live weddings. Whether a `gltf` template with `ART_PENDING` art may publish for live weddings is not decided. Decide at T-306 / T-501 (`specs.md` §17).
+
+---
+
+## D-024 — CSP `connect-src` allows `blob:`
+
+**Status:** Accepted 2026-10-30. Amends D-015.
+
+**Context:** three's `GLTFLoader` loads textures embedded in a GLB through `ImageBitmapLoader`, which fetches them via same-document `blob:` URLs (comment in `apps/web/next.config.ts`, line 23). The `connect-src 'self'` baseline of D-015 does not cover them.
+
+**Decision:** `connect-src 'self' blob:`. `script-src` is unchanged. The reviewer judged this acceptable, because `blob:` URLs are origin-bound and do not open network egress.
+
+**Spec impact:**
+- `architecture.md` §14 — record `connect-src 'self' blob:` and its reason.
+- When the GLB moves to a CDN (`NEXT_PUBLIC_ASSET_CDN_URL`, `architecture.md` §15), `connect-src` must also add the CDN origin. T-603 keeps `blob:`.
+
+---
+
+## D-025 — Joglo asset pack: location and ownership
+
+**Status:** Accepted 2026-10-30 (user decision). Amends D-019.
+
+**Context:** the user's procedural asset pack was at the repo root as `joglo_interior/`. `architecture.md` §4.2 places source art under `assets/source/`. D-019 left the move open. The pack's README states that all geometry and procedural textures were generated originally, with no third-party stock models or textures.
+
+**Decision:**
+- Moved, with user approval, to `assets/source/joglo-interior/`. It holds the build and optimize scripts, `scene-config.json`, `README.md`, `docs/r3f-integration.md`, `textures/`, `previews/`, `models/`, `viewer/index.html`, `requirements.txt` and `validation-report.json`.
+- Ownership and license: the user states the pack is owned by the user and licensed for production use. The pack has no LICENSE file, so the statement is recorded in `docs/asset-register.md` as the user's statement.
+- Status: stays `ENGINEERING_DONE / ART_PENDING` until art sign-off. The README says the pack is not equivalent to professional hand-modeled realism.
+- `apps/assets/` is not moved. The D-019 open item for it stands.
+
+**Spec impact:** `architecture.md` §4.2 layout is followed. `docs/asset-register.md` is created. The register entries satisfy `architecture.md` §8.5 (line 364).
+
+---
+
+## D-026 — Dialog ignores stale close events
+
+**Status:** Accepted 2026-10-30. Dev-only bug, fixed.
+
+**Context:** in development, React StrictMode runs effects twice, so a dialog could close right after it opened.
+
+**Decision:** `packages/ui/src/dialogLifecycle.ts` ignores stale `close` events. Covered by 5 unit tests in `packages/ui/src/dialogLifecycle.test.ts`.
+
+**Spec impact:** none. Part of the accessible dialog layout of T-108.
+
+---
+
+## D-027 — Content overlays open while a scene loads or fails
+
+**Status:** Accepted 2026-10-30.
+
+**Context:** `architecture.md` §8.2 defines `ERROR` but does not say which overlays stay available in it. `specs.md` G-01 requires guests to reach critical event information without being trapped in game mechanics. D-017 sends asset failures to ERROR.
+
+**Decision:** the Info Acara, RSVP and Peta overlays can open while a scene is loading or switching, and while in ERROR.
+
+**Spec impact:** `architecture.md` §8.2 — add overlay availability for the loading and ERROR states.
+
+---
+
+## D-028 — Welcome overlay opens on demand, not on load
+
+**Status:** Provisional 2026-10-30. Owner to confirm.
+
+**Context:** `specs.md` FR-01 implementation lists "welcome UI, start prompt" (line 98) without saying whether it opens by itself. An auto-open at load would push an OVERLAY_OPEN history entry at load (D-014).
+
+**Decision:** the welcome overlay opens from the welcome sign or its control, not on load.
+
+**Spec impact:** `specs.md` FR-01 — owner to confirm the reading. T-201 (Entrance name/welcome) stays IN_PROGRESS until it is confirmed.
+
+---
+
+## D-029 — Unsourced Indonesian copy
+
+**Status:** Open. Owner review, 2026-10-30.
+
+**Context:** `CLAUDE.md` requires product copy in Indonesian. The spec set gives no wording for the strings below, so they were written during the build. They are not product rules.
+
+**Decision:** keep these strings for review:
+- RSVP and guestbook shell: "Khusus tamu undangan" and the explanation of the personal invitation link.
+- Photo booth: "Segera hadir" and the note that it never uses the camera.
+- Welcome text.
+- Event kind labels: "Upacara" (ceremony) and "Resepsi" (reception).
+
+**Spec impact:** none. Owner to approve or replace each string.
+
+---
+
+## D-030 — 2D view uses `?mode=2d`
+
+**Status:** Accepted 2026-10-30.
+
+**Context:** `architecture.md` §3 (line 74) says `/w/[slug]` falls back to 2D on unsupported browsers, but defines no manual switch. FR-01 requires an accessible 2D link that works before hydration.
+
+**Decision:**
+- "Mode 2D" is a real link to `?mode=2d` (`apps/web/components/viewer/GlobalNav.tsx`). It works before hydration.
+- The page reads `?mode=2d` and starts in 2D (`apps/web/app/(public)/w/[slug]/page.tsx`).
+- "Kembali ke 3D" removes the query, so a reload stays in 3D (`apps/web/components/viewer/Viewer.tsx`).
+
+Tests: `e2e/fallback.spec.ts`, `[T-108]` ×2 and `[D-017]` GLB 404 → ERROR panel.
+
+**Spec impact:** `architecture.md` §3 — record the `mode` query parameter.
+
+---
+
+## D-031 — E2E timeouts for the GLB living room
+
+**Status:** Accepted 2026-10-30 for `test.slow()` (timeout only). Worker cap: proposed, owner decision.
+
+**Context:** the GLB living room renders at about 150 ms per frame on headless SwiftShader. That is a test-environment number, not device FPS. `architecture.md` §12 (line 409) aims for ≥30 FPS on mid-range devices. That is unmeasured.
+
+**Decision:** `test.slow()` is applied to three tests. Their assertions are unchanged:
+- `e2e/navigation.spec.ts`, `E2E-04 scene map navigates all four scenes…`
+- `e2e/navigation.spec.ts`, `[FR-04] 10 transitions do not grow data-gl-geometries`
+- `e2e/viewer.spec.ts`, `[T-301] garden/hall hotspots open…`
+
+**Known limitation:** under `--repeat-each=3` with 4 workers, other living-room tests (`[FR-04] HTML controls…`, `E2E-02`) still hit the 30 s timeout intermittently. The normal full suite is consistently green.
+
+**Proposed, not applied:** cap Playwright workers in CI at 2, or mark all living-room tests slow. Owner decision.
+
+**Spec impact:** none. `specs.md` §13.3 assertions are unchanged. Device FPS is tracked under T-006 in `docs/progress.md`.
