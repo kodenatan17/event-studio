@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 
+import { sceneControl } from './helpers';
+
 test('E2E-10 WebGL disabled → 2D fallback with names, Akad Nikah, a chapter title, gallery fallback tiles, Khusus tamu undangan', async ({
   page,
 }) => {
@@ -105,7 +107,7 @@ test('[D-017] living-room GLB 404 → ERROR panel with Coba lagi and Mode 2D', a
   await page.goto('/w/demo-wedding');
   const status = page.getByTestId('world-status');
   await expect(status).toHaveAttribute('data-world-status', 'READY', { timeout: 30_000 });
-  await page.locator('[data-hotspot-id="front-door"]').click();
+  await (await sceneControl(page, 'front-door')).click();
 
   // Asset failure is ERROR (retry + 2D), not the render-error 2D fallback (D-017).
   await expect(status).toHaveAttribute('data-world-status', 'ERROR', { timeout: 30_000 });

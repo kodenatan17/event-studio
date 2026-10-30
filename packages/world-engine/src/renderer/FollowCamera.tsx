@@ -22,6 +22,8 @@ interface FollowCameraProps {
 }
 
 const FOLLOW_RATE = 4;
+/** A new scene's camera starts this far above/behind its follow position and eases in. */
+const ARRIVAL_OFFSET = new Vector3(0, 1.5, 2.5);
 const BASE_FOV = 45;
 const MAX_PORTRAIT_FOV = 70;
 const LIFT_PER_PORTRAIT = 1.2;
@@ -60,7 +62,10 @@ function framingFor(aspect: number, baseFov: number): Framing {
 
 const lean = (value: number): number => Math.max(-MAX_LEAN, Math.min(MAX_LEAN, value));
 
-/** Fixed 3/4 elevated follow view (architecture.md §8.1); snaps instead of easing on reduced motion. */
+/**
+ * Fixed 3/4 elevated follow view (architecture.md §8.1). Each scene arrival eases in from
+ * `ARRIVAL_OFFSET`; reduced motion snaps instead of easing.
+ */
 export function FollowCamera({
   target,
   offset,
@@ -96,10 +101,18 @@ export function FollowCamera({
       avatar.z + offset[2] * distance,
     );
     lookTarget.current.set(focusX, avatar.y + lookHeight, avatar.z - lookAhead);
-    if (!initialized.current || reducedMotion) {
+    if (!initialized.current) {
       camera.position.copy(desired.current);
+      if (!reducedMotion) {
+        camera.position.add(ARRIVAL_OFFSET);
+        // Interiors cap the height (beams); the arrival respects it too.
+        camera.position.y = Math.min(camera.position.y, avatar.y + maxHeight);
+      }
       look.current.copy(lookTarget.current);
       initialized.current = true;
+    } else if (reducedMotion) {
+      camera.position.copy(desired.current);
+      look.current.copy(lookTarget.current);
     } else {
       const t = 1 - Math.exp(-Math.min(delta, MAX_FRAME_DELTA) * FOLLOW_RATE);
       camera.position.lerp(desired.current, t);

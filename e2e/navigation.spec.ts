@@ -1,25 +1,10 @@
 import { expect, test } from '@playwright/test';
-import type { Locator, Page } from '@playwright/test';
+import type { Locator } from '@playwright/test';
 
-async function expectScene(status: Locator, sceneId: string) {
-  await expect(status).toHaveAttribute('data-world-status', 'READY', { timeout: 30_000 });
-  await expect(status).toHaveAttribute('data-scene-id', sceneId);
-}
+import { expectScene, goViaMap, sceneControl } from './helpers';
 
 async function requestId(status: Locator): Promise<number> {
   return Number(await status.getAttribute('data-request-id'));
-}
-
-function control(page: Page, id: string): Locator {
-  return page.locator(`[data-hotspot-id="${id}"]`);
-}
-
-/** Opens the global "Peta" dialog and picks a scene, like a guest would. */
-async function goViaMap(page: Page, label: string) {
-  await page.getByRole('button', { name: 'Peta', exact: true }).click();
-  const map = page.getByRole('dialog', { name: 'Peta' });
-  await map.getByRole('button', { name: label, exact: true }).click();
-  await expect(map).toHaveCount(0);
 }
 
 /** `gl.info.memory.geometries` once two samples (renderer reports every 0.5 s) agree. */
@@ -43,6 +28,7 @@ async function settledGeometries(status: Locator): Promise<number> {
 test('[FR-04] HTML controls switch entrance → living room → garden → back; double click on a portal control raises data-request-id by exactly 1', async ({
   page,
 }) => {
+  test.slow(); // GLB living room is slow on SwiftShader (D-031); timeout only.
   const pageErrors: string[] = [];
   page.on('pageerror', (error) => pageErrors.push(error.message));
 
@@ -52,20 +38,20 @@ test('[FR-04] HTML controls switch entrance → living room → garden → back;
   await expect(status).toContainText('Gerbang siap');
 
   const beforeDoor = await requestId(status);
-  await control(page, 'front-door').dblclick();
+  await (await sceneControl(page, 'front-door')).dblclick();
   await expectScene(status, 'living-room');
   expect(await requestId(status)).toBe(beforeDoor + 1);
   await expect(status).toContainText('Ruang Tamu siap');
 
   // Every hotspot of the living room has a labelled control (architecture.md §3.4).
   for (const id of ['story-book', 'photo-frame-01', 'photo-frame-02', 'photo-frame-03']) {
-    await expect(control(page, id)).toBeVisible();
+    await expect(await sceneControl(page, id)).toBeVisible();
   }
 
-  await control(page, 'garden-door').click();
+  await (await sceneControl(page, 'garden-door')).click();
   await expectScene(status, 'wedding-garden');
 
-  await control(page, 'back-to-living').click();
+  await (await sceneControl(page, 'back-to-living')).click();
   await expectScene(status, 'living-room');
 
   await page.getByRole('button', { name: 'Peta', exact: true }).click();
@@ -106,9 +92,9 @@ test('[FR-04] 10 transitions do not grow data-gl-geometries', async ({ page }) =
   const first = await settledGeometries(status);
 
   for (let round = 0; round < 5; round += 1) {
-    await control(page, 'front-door').click();
+    await (await sceneControl(page, 'front-door')).click();
     await expectScene(status, 'living-room');
-    await control(page, 'back-to-entrance').click();
+    await (await sceneControl(page, 'back-to-entrance')).click();
     await expectScene(status, 'entrance');
   }
 
@@ -123,7 +109,7 @@ test('[§8.2] hotspot control opens a modal overlay that blocks input until clos
   await expectScene(status, 'entrance');
   const before = await requestId(status);
 
-  const opener = control(page, 'welcome-sign');
+  const opener = await sceneControl(page, 'welcome-sign');
   await opener.click();
   await expect(status).toHaveAttribute('data-world-status', 'OVERLAY_OPEN');
   const panel = page.getByRole('dialog', { name: 'Sambutan' });
@@ -133,7 +119,9 @@ test('[§8.2] hotspot control opens a modal overlay that blocks input until clos
 
   // Everything behind the dialog is inert: controls cannot be clicked or focused.
   await expect(page.getByTestId('world-layer')).toHaveAttribute('inert', '');
-  await expect(control(page, 'front-door').click({ timeout: 1_000 })).rejects.toThrow();
+  await expect(
+    page.locator('[data-hotspot-id="front-door"]').click({ timeout: 1_000 }),
+  ).rejects.toThrow();
   await page.evaluate(() => {
     const record = window as unknown as { focusOutside: number };
     record.focusOutside = 0;

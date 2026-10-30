@@ -2,11 +2,23 @@ import { describe, expect, it } from 'vitest';
 
 import { getSceneLayout } from '../templates/blockout';
 import type { Collider, Rect } from './walk';
-import { clampToFloor, isBlocked, MAX_FRAME_DELTA, stepToward } from './walk';
+import { clampToFloor, isBlocked, MAX_FRAME_DELTA, moveWithCollisions, stepToward } from './walk';
 
 const floor: Rect = { minX: -5, maxX: 5, minZ: -5, maxZ: 5 };
 const table: Collider = { id: 'TABLE', minX: -1, maxX: 1, minZ: -0.5, maxZ: 0.5 };
 const RADIUS = 0.3;
+
+/** mulberry32: deterministic random sequence for the property test. */
+function random(seed: number): () => number {
+  let state = seed >>> 0;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
 
 describe('walk', () => {
   it('[FR-04] never enters collider', () => {
@@ -52,6 +64,67 @@ describe('walk', () => {
     }
     expect(arrived).toBe(true);
     expect(position).toEqual([2, 2]);
+  });
+
+  it('[§8.4] moveWithCollisions slides per axis', () => {
+    // Pushing diagonally into the table's near face slides along x, z stays at the face.
+    const start: [number, number] = [0, table.maxZ + RADIUS + 0.01];
+    const end = moveWithCollisions(start, [1, -1], 3, 0.1, floor, [table], RADIUS);
+    expect(end[0]).toBeGreaterThan(0.15);
+    expect(end[1]).toBeCloseTo(start[1]);
+    expect(isBlocked(end, [table], RADIUS)).toBe(false);
+
+    // Straight into the face: no free axis; the gap closes to contact, never inside.
+    const headOn = moveWithCollisions(start, [0, -1], 3, 0.1, floor, [table], RADIUS);
+    expect(headOn[0]).toBe(start[0]);
+    expect(headOn[1]).toBeGreaterThanOrEqual(table.maxZ + RADIUS);
+    expect(headOn[1]).toBeLessThan(table.maxZ + RADIUS + 0.005);
+
+    // Along the floor edge: the outward component is clamped, the rest slides.
+    const edge = moveWithCollisions([4.6, 0], [1, 1], 3, 0.1, floor, [], RADIUS);
+    expect(edge[0]).toBeCloseTo(floor.maxX - RADIUS);
+    expect(edge[1]).toBeGreaterThan(0.1);
+  });
+
+  it('[§8.4] 1000 seeded random steps never end inside an expanded collider', () => {
+    const layout = getSceneLayout('blockout', 'wedding-garden');
+    if (!layout) throw new Error('wedding-garden layout missing');
+    const next = random(20261030);
+    let position: [number, number] = [
+      layout.spawnPoints.SPAWN_ENTRY?.[0] ?? 0,
+      layout.spawnPoints.SPAWN_ENTRY?.[1] ?? 0,
+    ];
+    let direction: [number, number] = [0, -1];
+    for (let step = 0; step < 1000; step += 1) {
+      if (step % 7 === 0) {
+        const angle = next() * Math.PI * 2;
+        direction = [Math.cos(angle), Math.sin(angle)];
+      }
+      // Frame deltas up to 0.3 s (clamped) and speeds up to 1.5 × walking.
+      position = moveWithCollisions(
+        position,
+        direction,
+        2.6 * (0.2 + next() * 1.3),
+        next() * 0.3,
+        layout.floor,
+        layout.colliders,
+        RADIUS,
+      );
+      expect(isBlocked(position, layout.colliders, RADIUS), `step ${step}`).toBe(false);
+      expect(clampToFloor(position, layout.floor, RADIUS)).toEqual(position);
+    }
+  });
+
+  it('[§8.4] large delta clamped and sub-stepped', () => {
+    const afterPause = moveWithCollisions([0, 4], [0, -1], 3, 30, floor, [], RADIUS);
+    expect(afterPause[1]).toBeCloseTo(4 - 3 * MAX_FRAME_DELTA);
+    expect(moveWithCollisions([0, 4], [0, -1], 3, -1, floor, [], RADIUS)).toEqual([0, 4]);
+
+    // 3 m in one frame would jump a 5 cm wall; 0.2 m sub-steps stop in front of it.
+    const wall: Collider = { id: 'THIN', minX: -3, maxX: 3, minZ: 1.975, maxZ: 2.025 };
+    const end = moveWithCollisions([0, 4], [0, -1], 30, 0.1, floor, [wall], RADIUS);
+    expect(end[1]).toBeGreaterThanOrEqual(wall.maxZ + RADIUS);
+    expect(end[1]).toBeLessThan(wall.maxZ + RADIUS + 0.005);
   });
 
   it('[FR-04] living-room: avatar cannot enter saka guru, sofa or table colliders', () => {

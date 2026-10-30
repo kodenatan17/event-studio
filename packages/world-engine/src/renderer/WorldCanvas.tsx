@@ -2,16 +2,25 @@
 
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import type { SceneDefinition, WorldAction } from '@undangan/contracts/world';
-import { Component, Suspense, useEffect, useRef } from 'react';
+import { Component, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 
+import { useKeyboardInput } from '../input/useKeyboardInput';
 import type { WorldStore } from '../scene-manager/store';
 import { useWorldStore } from '../scene-manager/useWorldStore';
 import { Environment } from '../scenes/Environment';
 import { clearGltfCache, GltfScene } from '../scenes/GltfScene';
 import { PrimitiveScene } from '../scenes/PrimitiveScene';
 import { getSceneLayout } from '../templates/blockout';
-import { resolveDpr, usePrefersReducedMotion } from './capabilities';
+import { Bloom } from './Bloom';
+import {
+  isSoftwareRenderer,
+  resolveDpr,
+  resolveRenderTier,
+  usePointerCoarse,
+  usePrefersReducedMotion,
+} from './capabilities';
+import type { RenderTier } from './capabilities';
 
 export interface WorldCanvasProps {
   store: WorldStore;
@@ -110,6 +119,7 @@ interface SceneHostProps {
   templateId: string;
   spawnPointId: string | null;
   reducedMotion: boolean;
+  tier: RenderTier;
   isActionEnabled?: (action: WorldAction) => boolean;
 }
 
@@ -125,6 +135,7 @@ function SceneHost({
   templateId,
   spawnPointId,
   reducedMotion,
+  tier,
   isActionEnabled,
 }: SceneHostProps) {
   const layout = scene ? getSceneLayout(templateId, scene.id) : null;
@@ -149,6 +160,7 @@ function SceneHost({
           layout={layout}
           spawnPointId={spawnPointId}
           reducedMotion={reducedMotion}
+          tier={tier}
           isActionEnabled={isActionEnabled}
         />
         <ReadySignal store={store} requestId={requestId} />
@@ -166,10 +178,12 @@ function SceneHost({
       <Suspense fallback={null}>
         <GltfScene
           store={store}
+          requestId={requestId}
           scene={scene}
           layout={layout}
           spawnPointId={spawnPointId}
           reducedMotion={reducedMotion}
+          tier={tier}
           isActionEnabled={isActionEnabled}
           onLoadFailed={failAsset}
         />
@@ -179,7 +193,13 @@ function SceneHost({
   );
 }
 
-function ActiveScene({ store, scenes, templateId, isActionEnabled }: WorldCanvasProps) {
+function ActiveScene({
+  store,
+  scenes,
+  templateId,
+  isActionEnabled,
+  tier,
+}: WorldCanvasProps & { tier: RenderTier }) {
   const status = useWorldStore(store, (state) => state.status);
   const requestId = useWorldStore(store, (state) => state.transitionRequestId);
   const sceneId = useWorldStore(store, (state) => state.pendingSceneId ?? state.currentSceneId);
@@ -196,6 +216,7 @@ function ActiveScene({ store, scenes, templateId, isActionEnabled }: WorldCanvas
       templateId={templateId}
       spawnPointId={spawnPointId}
       reducedMotion={reducedMotion}
+      tier={tier}
       isActionEnabled={isActionEnabled}
     />
   );
@@ -204,6 +225,25 @@ function ActiveScene({ store, scenes, templateId, isActionEnabled }: WorldCanvas
 export function WorldCanvas({ store, scenes, templateId, isActionEnabled }: WorldCanvasProps) {
   const quality = useWorldStore(store, (state) => state.qualityProfile);
   const antialias = quality !== 'low';
+  const coarsePointer = usePointerCoarse();
+  const reducedMotion = usePrefersReducedMotion();
+  // Unknown until the context exists: treated as software, so bloom never starts on a guess.
+  const [softwareRenderer, setSoftwareRenderer] = useState<boolean | null>(null);
+  const tier = useMemo(
+    () =>
+      resolveRenderTier({
+        quality,
+        coarsePointer,
+        reducedMotion,
+        softwareRenderer: softwareRenderer ?? true,
+      }),
+    [quality, coarsePointer, reducedMotion, softwareRenderer],
+  );
+
+  useKeyboardInput(store);
+  useEffect(() => {
+    store.getState().setPostFx(tier.bloom ? 'bloom' : 'off');
+  }, [store, tier.bloom]);
 
   return (
     <CanvasErrorBoundary onError={() => store.getState().enterFallback('render_error')}>
@@ -218,15 +258,18 @@ export function WorldCanvas({ store, scenes, templateId, isActionEnabled }: Worl
         onCreated={({ gl }) => {
           // Taps and drags belong to the world, never to page scroll/zoom (FR-04).
           gl.domElement.style.touchAction = 'none';
+          setSoftwareRenderer(isSoftwareRenderer(gl));
         }}
       >
         <RendererProbes store={store} />
         <Environment />
+        {tier.bloom ? <Bloom /> : null}
         <ActiveScene
           store={store}
           scenes={scenes}
           templateId={templateId}
           isActionEnabled={isActionEnabled}
+          tier={tier}
         />
       </Canvas>
     </CanvasErrorBoundary>

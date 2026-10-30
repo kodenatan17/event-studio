@@ -8,6 +8,8 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 import { devWarn } from '../dev';
+import { tagKey } from '../interaction/nearby';
+import type { Interactable } from '../interaction/nearby';
 import type { InteractiveTag } from '../interaction/registry';
 import {
   pickInteractive,
@@ -18,12 +20,14 @@ import {
   toUpperSnake,
 } from '../interaction/registry';
 import { clampToFloor } from '../navigation/walk';
+import type { RenderTier } from '../renderer/capabilities';
 import { FollowCamera } from '../renderer/FollowCamera';
 import { selectInputEnabled } from '../scene-manager/store';
 import type { WorldStore } from '../scene-manager/store';
 import type { GltfLayout, Vec3 } from '../templates/types';
 import { Avatar, AVATAR_RADIUS, Marker } from './Avatar';
 import { Decor } from './decor/Decor';
+import { INDICATOR_SCALE, updateIndicators } from './indicators';
 import { noRaycast, setCursor, TAP_SLOP_PX } from './input';
 import { extraMaterials, geometries } from './materials';
 
@@ -33,10 +37,13 @@ const TRIGGER_INDICATOR_LIFT = 0.15;
 
 interface GltfSceneProps {
   store: WorldStore;
+  /** Transition this load belongs to; download progress of older requests is ignored. */
+  requestId: number;
   scene: SceneDefinition;
   layout: GltfLayout;
   spawnPointId: string | null;
   reducedMotion: boolean;
+  tier: RenderTier;
   /** Same filter as the HTML controls: rejected hotspots are hidden and not raycast. */
   isActionEnabled?: (action: WorldAction) => boolean;
   /** The GLB could not be fetched or parsed (D-017: ERROR with retry and 2D). */
@@ -134,7 +141,9 @@ function releaseGpuResources(root: Object3D): void {
 interface PreparedModel {
   model: Object3D;
   /** Indicator positions above interactive nodes, keyed by node name. */
-  indicators: { name: string; position: Vec3 }[];
+  indicators: { name: string; position: Vec3; tagKey: string }[];
+  /** Floor footprints of the mapped nodes and triggers, for "Buka" / E (§3.4). */
+  interactables: Interactable[];
 }
 
 /**
@@ -151,6 +160,7 @@ function prepareModel(
   const model = source.clone(true);
   model.updateMatrixWorld(true);
   const indicators: PreparedModel['indicators'] = [];
+  const interactables: Interactable[] = [];
   const bounds = new Box3();
   let hasFloor = false;
   model.traverse((object) => {
@@ -168,6 +178,13 @@ function prepareModel(
           bounds.max.y + INDICATOR_LIFT,
           (bounds.min.z + bounds.max.z) / 2,
         ],
+        tagKey: tagKey(node.tag),
+      });
+      interactables.push({
+        tag: node.tag,
+        action: node.action,
+        min: [bounds.min.x, bounds.min.z],
+        max: [bounds.max.x, bounds.max.z],
       });
     } else if (name.includes('HS_') || name.startsWith('SPAWN_')) {
       object.visible = false;
@@ -184,9 +201,21 @@ function prepareModel(
   if (!hasFloor) devWarn(`GLB ${layout.url} has no floor node ${layout.floor.nodeName}`);
   for (const [name, trigger] of Object.entries(layout.triggers)) {
     const [x, y, z] = trigger.position;
-    if (nodes.has(name)) {
+    const node = nodes.get(name);
+    if (node) {
       // Low on the strip, so it never floats over an avatar standing just inside the edge.
-      indicators.push({ name, position: [x, y + trigger.size[1] / 2 + TRIGGER_INDICATOR_LIFT, z] });
+      indicators.push({
+        name,
+        position: [x, y + trigger.size[1] / 2 + TRIGGER_INDICATOR_LIFT, z],
+        tagKey: tagKey(node.tag),
+      });
+      const [width, , depth] = trigger.size;
+      interactables.push({
+        tag: node.tag,
+        action: node.action,
+        min: [x - width / 2, z - depth / 2],
+        max: [x + width / 2, z + depth / 2],
+      });
     }
   }
   for (const name of nodes.keys()) {
@@ -194,14 +223,20 @@ function prepareModel(
       devWarn(`GLB ${layout.url} has no node ${name}`);
     }
   }
-  return { model, indicators };
+  return { model, indicators, interactables };
 }
 
 const UP = new Vector3(0, 1, 0);
 
 /** GLB scene for gltf layouts: suspends while loading, reports a failed load, else renders. */
 export function GltfScene({ onLoadFailed, ...props }: GltfSceneProps) {
-  const gltf = useLoader(SceneGltfLoader, props.layout.url);
+  const { store, requestId, layout } = props;
+  // Only the first (uncached) load reports progress. The denominator is the catalog size:
+  // gzip makes Content-Length the compressed size (§8.1 loading feedback).
+  const gltf = useLoader(SceneGltfLoader, layout.url, undefined, (event: ProgressEvent) => {
+    const total = layout.sizeBytes ?? (event.lengthComputable ? event.total : 0);
+    if (total > 0) store.getState().setLoadProgress(requestId, event.loaded / total);
+  });
   if (isLoadFailure(gltf)) return <LoadFailed onLoadFailed={onLoadFailed} />;
   return <LoadedGltfScene {...props} gltf={gltf} />;
 }
@@ -220,6 +255,7 @@ function LoadedGltfScene({
   reducedMotion,
   isActionEnabled,
   gltf,
+  tier,
 }: Omit<GltfSceneProps, 'onLoadFailed'> & { gltf: GLTF }) {
   const [spawn] = useState(
     () =>
@@ -232,12 +268,13 @@ function LoadedGltfScene({
   const [hitMaterial] = useState(
     () => new MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }),
   );
-  const { model, indicators } = useMemo(
+  const { model, indicators, interactables } = useMemo(
     () => prepareModel(gltf.scene, layout, nodes, hitMaterial),
     [gltf, layout, nodes, hitMaterial],
   );
   const floorPlane = useMemo(() => new Plane(UP, -layout.floor.y), [layout]);
   const indicatorMeshes = useRef<(Mesh | null)[]>([]);
+  const hovered = useRef<string | null>(null);
 
   // The hit material is ours; the GLTF stays in the loader cache (CPU) for fast re-entry, but its
   // GPU buffers and textures are released so leaving the scene does not grow memory (FR-04).
@@ -276,17 +313,26 @@ function LoadedGltfScene({
 
   const handlePointerMove = useCallback((event: ThreeEvent<PointerEvent>) => {
     event.stopPropagation();
-    setCursor(pickInteractive(event.intersections) ? 'pointer' : '');
+    const tag = pickInteractive(event.intersections);
+    hovered.current = tag ? tagKey(tag) : null;
+    setCursor(tag ? 'pointer' : '');
   }, []);
 
-  useFrame(({ clock }) => {
-    const t = clock.elapsedTime;
-    indicatorMeshes.current.forEach((mesh) => {
-      if (!mesh) return;
-      const baseY = mesh.userData.baseY as number;
-      mesh.position.y = reducedMotion ? baseY : baseY + 0.08 * Math.sin(t * 2);
-      mesh.rotation.y = reducedMotion ? 0 : t;
-    });
+  const handlePointerOut = useCallback(() => {
+    hovered.current = null;
+    setCursor('');
+  }, []);
+
+  useFrame(({ clock }, delta) => {
+    const nearby = store.getState().nearby;
+    updateIndicators(
+      indicatorMeshes.current,
+      clock.elapsedTime,
+      delta,
+      nearby ? tagKey(nearby) : null,
+      hovered.current,
+      reducedMotion,
+    );
   });
 
   const { floor } = layout;
@@ -298,7 +344,7 @@ function LoadedGltfScene({
       <group
         onClick={handleClick}
         onPointerMove={handlePointerMove}
-        onPointerOut={() => setCursor('')}
+        onPointerOut={handlePointerOut}
       >
         <primitive object={model} dispose={null} />
         {Object.entries(layout.triggers).map(([name, trigger]) => {
@@ -327,8 +373,8 @@ function LoadedGltfScene({
           geometry={geometries.flower}
           material={extraMaterials.lanternGlow}
           position={indicator.position}
-          scale={[0.2, 0.3, 0.2]}
-          userData={{ baseY: indicator.position[1] }}
+          scale={INDICATOR_SCALE}
+          userData={{ baseY: indicator.position[1], tagKey: indicator.tagKey }}
           raycast={noRaycast}
           dispose={null}
         />
@@ -337,9 +383,13 @@ function LoadedGltfScene({
       <Avatar
         store={store}
         colliders={layout.colliders}
+        floor={floor}
         floorY={floor.y}
         spawn={spawn}
         position={avatarPosition}
+        interactables={interactables}
+        reducedMotion={reducedMotion}
+        tier={tier}
       />
       <Marker store={store} floorY={floor.y} />
       <FollowCamera

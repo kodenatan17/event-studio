@@ -87,3 +87,66 @@ export function stepToward(
   }
   return { position: [position[0], position[1]], arrived: false, blocked: true };
 }
+
+/** Longest collision sub-step (m); well under the 0.6 m width of a radius-expanded collider. */
+const MAX_SUB_STEP = 0.2;
+/** Bisections closing a head-on gap: ≤ 0.2 m / 64 ≈ 3 mm short of contact. */
+const CONTACT_ITERATIONS = 6;
+
+/**
+ * Free movement (keyboard/joystick, FR-04) that never clips (§8.4): the clamped frame move is
+ * split into sub-steps of ≤ 0.2 m; each tries the full step, then x only, then z only (sliding
+ * along walls and furniture). When none is free the avatar closes the gap to the obstacle by
+ * bisection and stops. `direction` sets the heading only.
+ */
+export function moveWithCollisions(
+  position: Vec2,
+  direction: Vec2,
+  speed: number,
+  delta: number,
+  floor: Rect,
+  colliders: readonly Collider[],
+  radius: number,
+): [number, number] {
+  const dt = Math.min(Math.max(delta, 0), MAX_FRAME_DELTA);
+  const length = Math.hypot(direction[0], direction[1]);
+  let x = position[0];
+  let z = position[1];
+  const distance = Math.max(speed, 0) * dt;
+  if (length < 1e-9 || distance <= 0) return [x, z];
+
+  const steps = Math.ceil(distance / MAX_SUB_STEP);
+  const sx = (direction[0] / length) * (distance / steps);
+  const sz = (direction[1] / length) * (distance / steps);
+  for (let step = 0; step < steps; step += 1) {
+    const candidates: Vec2[] = [
+      [x + sx, z + sz],
+      [x + sx, z],
+      [x, z + sz],
+    ];
+    let moved = false;
+    for (const candidate of candidates) {
+      const next = clampToFloor(candidate, floor, radius);
+      if ((next[0] !== x || next[1] !== z) && !isBlocked(next, colliders, radius)) {
+        [x, z] = next;
+        moved = true;
+        break;
+      }
+    }
+    if (!moved) {
+      // Head-on: the start is free and colliders are wider than a sub-step, so the free part of
+      // the step is one interval from 0; bisect its end instead of stopping a sub-step short.
+      let free = 0;
+      let blocked = 1;
+      for (let iteration = 0; iteration < CONTACT_ITERATIONS; iteration += 1) {
+        const mid = (free + blocked) / 2;
+        const probe = clampToFloor([x + sx * mid, z + sz * mid], floor, radius);
+        if (isBlocked(probe, colliders, radius)) blocked = mid;
+        else free = mid;
+      }
+      if (free > 0) [x, z] = clampToFloor([x + sx * free, z + sz * free], floor, radius);
+      break;
+    }
+  }
+  return clampToFloor([x, z], floor, radius);
+}

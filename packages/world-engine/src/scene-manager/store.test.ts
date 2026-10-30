@@ -320,10 +320,141 @@ describe('createWorldStore', () => {
     expect(store.getState()).toMatchObject({ status: 'BOOT', activeOverlay: null });
   });
 
+  it('[§8.2] overlay open resets input and nearby', () => {
+    const store = readyStore();
+    const { input } = store.getState();
+    const fill = () => {
+      input.keys.add('KeyW');
+      input.joystick.x = 0.7;
+      input.actions.push('interact');
+      store.getState().setNearby({ kind: 'hotspot', id: 'welcome-sign' });
+    };
+    fill();
+    expect(store.getState().nearby).toEqual({ kind: 'hotspot', id: 'welcome-sign' });
+
+    store.getState().openOverlay({ type: 'quick_map' });
+    expect(store.getState().nearby).toBeNull();
+    expect(input.keys.size).toBe(0);
+    expect(input.joystick).toEqual({ x: 0, y: 0 });
+    expect(input.actions).toEqual([]);
+    // Never replaced: input sources keep writing to the same bus.
+    expect(store.getState().input).toBe(input);
+
+    store.getState().closeOverlay();
+    fill();
+    store.getState().requestScene('living-room');
+    expect(store.getState()).toMatchObject({ nearby: null, avatarProbe: null });
+    expect(input.keys.size).toBe(0);
+
+    fill();
+    store.getState().enterFallback('context_lost');
+    expect(store.getState().nearby).toBeNull();
+    expect(input.actions).toEqual([]);
+  });
+
+  it('[FR-04] setLoadProgress ignores stale request ids', () => {
+    const store = readyStore();
+    const first = store.getState().requestScene('living-room') ?? -1;
+    store.getState().sceneLoading(first);
+    store.getState().setLoadProgress(first, 0.4);
+    expect(store.getState().loadProgress).toBe(0.4);
+
+    const second = store.getState().requestScene('wedding-garden') ?? -1;
+    expect(store.getState().loadProgress).toBeNull();
+    store.getState().setLoadProgress(first, 0.9);
+    expect(store.getState().loadProgress).toBeNull();
+    store.getState().setLoadProgress(second, 1.7);
+    expect(store.getState().loadProgress).toBe(1);
+
+    // Not loading anymore: ignored.
+    store.getState().sceneReady(second);
+    store.getState().setLoadProgress(second, 0.2);
+    expect(store.getState().loadProgress).toBe(1);
+  });
+
+  it('[FR-04] avatar probe is quantised and nearby/probe only change on change', () => {
+    const store = readyStore();
+    let updates = 0;
+    const unsubscribe = store.subscribe(() => (updates += 1));
+    store.getState().setAvatarProbe([1.234, -2.6049]);
+    expect(store.getState().avatarProbe).toEqual([1.25, -2.6]);
+    store.getState().setAvatarProbe([1.24, -2.61]);
+    store.getState().setNearby(null);
+    store.getState().setNearby({ kind: 'portal', id: 'front-door' });
+    store.getState().setNearby({ kind: 'portal', id: 'front-door' });
+    unsubscribe();
+    expect(updates).toBe(2);
+  });
+
   it('[§12] audio stays off until enabled', () => {
     const store = readyStore();
     expect(store.getState().soundEnabled).toBe(false);
     store.getState().setSound(true);
     expect(store.getState().soundEnabled).toBe(true);
+  });
+  it('[§8.2] avatar_editor opens only from READY', () => {
+    const store = createWorldStore({ sceneIds: SCENES, entrySceneId: 'entrance' });
+    store.getState().start();
+    // Loading (D-027 lets content overlays open here, not the editor).
+    store.getState().openOverlay({ type: 'avatar_editor' });
+    expect(store.getState().activeOverlay).toBeNull();
+    const { transitionRequestId } = store.getState();
+    store.getState().sceneLoading(transitionRequestId);
+    store.getState().sceneReady(transitionRequestId);
+
+    // Another overlay is open.
+    store.getState().openOverlay({ type: 'quick_map' });
+    store.getState().openOverlay({ type: 'avatar_editor' });
+    expect(store.getState().activeOverlay).toEqual({ type: 'quick_map' });
+    store.getState().closeOverlay();
+
+    store.getState().input.keys.add('KeyW');
+    store.getState().openOverlay({ type: 'avatar_editor' });
+    expect(store.getState()).toMatchObject({
+      status: 'OVERLAY_OPEN',
+      activeOverlay: { type: 'avatar_editor' },
+    });
+    expect(store.getState().input.keys.size).toBe(0);
+
+    // ERROR and 2D never open it.
+    const failed = readyStore();
+    const request = failed.getState().requestScene('living-room') ?? -1;
+    failed.getState().sceneFailed(request, 'ASSET_LOAD_FAILED');
+    failed.getState().openOverlay({ type: 'avatar_editor' });
+    expect(failed.getState().activeOverlay).toBeNull();
+    const flat = createWorldStore({
+      sceneIds: SCENES,
+      entrySceneId: 'entrance',
+      initialFallbackReason: 'manual',
+    });
+    flat.getState().openOverlay({ type: 'avatar_editor' });
+    expect(flat.getState().activeOverlay).toBeNull();
+  });
+
+  it('[FR-07] setAvatarAppearance normalises and survives scene changes', () => {
+    const store = readyStore();
+    expect(store.getState().avatarAppearance.body).toBe('pria');
+    let updates = 0;
+    const unsubscribe = store.subscribe(() => (updates += 1));
+    store.getState().setAvatarAppearance({
+      v: 1,
+      body: 'wanita',
+      skin: 'kuning',
+      slots: { top: { item: 'beskap' } },
+    });
+    expect(store.getState().avatarAppearance.slots.top).toEqual({
+      item: 'kebaya-kutubaru',
+      variant: 'hijau',
+    });
+    // Same look again: no update.
+    store.getState().setAvatarAppearance(store.getState().avatarAppearance);
+    unsubscribe();
+    expect(updates).toBe(1);
+
+    const look = store.getState().avatarAppearance;
+    const request = store.getState().requestScene('wedding-garden') ?? -1;
+    store.getState().sceneLoading(request);
+    store.getState().sceneReady(request);
+    expect(store.getState().avatarAppearance).toBe(look);
   });
 });

@@ -1,4 +1,4 @@
-import type { ActiveOverlay } from '@undangan/world-engine';
+import type { ActiveOverlay, InputAction } from '@undangan/world-engine';
 
 /** Indonesian labels for scenes and HTML controls; the manifest carries no labels (D-010). */
 const SCENE_LABELS: Readonly<Record<string, string>> = {
@@ -38,7 +38,30 @@ const OVERLAY_LABELS: Readonly<Record<ActiveOverlay['type'], string>> = {
   open_guestbook: 'Buku tamu',
   open_photo_booth: 'Photo booth',
   quick_map: 'Peta',
+  avatar_editor: 'Ubah Avatar',
 };
+
+/** Avatar action buttons (FR-04): "Buka" interacts with the hotspot in reach. */
+const AVATAR_ACTION_LABELS: Readonly<Record<InputAction, string>> = {
+  jump: 'Lompat',
+  interact: 'Buka',
+  wave: 'Sapa',
+};
+
+/** Mobile disclosure holding the scene's hotspot/portal controls. */
+export const INTERACTIONS_LABEL = 'Interaksi';
+
+/** Desktop keyboard hint: key caps and what they do. */
+export const KEYBOARD_HINTS: readonly { keys: readonly string[]; or?: string; label: string }[] = [
+  { keys: ['W', 'A', 'S', 'D'], or: 'panah', label: 'Jalan' },
+  { keys: ['Spasi'], label: 'Lompat' },
+  { keys: ['E'], label: 'Buka' },
+  { keys: ['Q'], label: 'Sapa' },
+];
+
+export function avatarActionLabel(action: InputAction): string {
+  return AVATAR_ACTION_LABELS[action];
+}
 
 function lookup(labels: Readonly<Record<string, string>>, id: string): string {
   return Object.hasOwn(labels, id) ? (labels[id] ?? id) : id;

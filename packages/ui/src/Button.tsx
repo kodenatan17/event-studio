@@ -7,10 +7,14 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   ref?: Ref<HTMLButtonElement>;
 }
 
-/** Touch target ≥44×44 CSS px (architecture.md §3.4); colours keep AA contrast on the warm palette. */
+/**
+ * Touch target ≥44×44 CSS px (architecture.md §3.4); colours keep AA contrast on the warm palette.
+ * Pressing shrinks the button slightly (not under reduced motion).
+ */
 const BASE =
   'inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-full px-4 py-2 ' +
-  'text-sm font-medium transition-colors motion-reduce:transition-none ' +
+  'text-sm font-medium transition-[color,background-color,border-color,scale] active:scale-[.97] ' +
+  'motion-reduce:transition-none motion-reduce:active:scale-100 ' +
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4e2c18] ' +
   'disabled:cursor-not-allowed disabled:opacity-50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50';
 

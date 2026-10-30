@@ -1,20 +1,13 @@
 import { expect, test } from '@playwright/test';
 import type { Locator, Page } from '@playwright/test';
 
-async function expectScene(status: Locator, sceneId: string) {
-  await expect(status).toHaveAttribute('data-world-status', 'READY', { timeout: 30_000 });
-  await expect(status).toHaveAttribute('data-scene-id', sceneId);
-}
-
-function control(page: Page, id: string): Locator {
-  return page.locator(`[data-hotspot-id="${id}"]`);
-}
+import { expectScene, sceneControl } from './helpers';
 
 async function openLivingRoom(page: Page): Promise<Locator> {
   await page.goto('/w/demo-wedding');
   const status = page.getByTestId('world-status');
   await expectScene(status, 'entrance');
-  await control(page, 'front-door').click();
+  await (await sceneControl(page, 'front-door')).click();
   await expectScene(status, 'living-room');
   return status;
 }
@@ -22,11 +15,12 @@ async function openLivingRoom(page: Page): Promise<Locator> {
 test('E2E-02 entrance → living room → story → next chapter → close returns focus', async ({
   page,
 }) => {
+  test.slow(); // GLB living room is slow on SwiftShader (D-031); timeout only.
   const pageErrors: string[] = [];
   page.on('pageerror', (error) => pageErrors.push(error.message));
   const status = await openLivingRoom(page);
 
-  const book = control(page, 'story-book');
+  const book = await sceneControl(page, 'story-book');
   await book.click();
   await expect(status).toHaveAttribute('data-world-status', 'OVERLAY_OPEN');
   const dialog = page.getByRole('dialog', { name: 'Kisah Kami' });
@@ -58,9 +52,10 @@ test('E2E-02 entrance → living room → story → next chapter → close retur
 test('E2E-03 gallery: open photo 1, ArrowRight shows 2/6, Escape closes; reopen, browser back closes dialog and URL unchanged', async ({
   page,
 }) => {
+  test.slow(); // GLB living room is slow on SwiftShader (D-031); timeout only.
   const status = await openLivingRoom(page);
   const url = page.url();
-  const frame = control(page, 'photo-frame-01');
+  const frame = await sceneControl(page, 'photo-frame-01');
 
   await frame.click();
   const dialog = page.getByRole('dialog', { name: 'Galeri Foto' });
@@ -92,16 +87,17 @@ test('E2E-03 gallery: open photo 1, ArrowRight shows 2/6, Escape closes; reopen,
 });
 
 test('[FR-02] living room shows 6 photo controls', async ({ page }) => {
+  test.slow(); // GLB living room is slow on SwiftShader (D-031); timeout only.
   const status = await openLivingRoom(page);
 
   for (let index = 1; index <= 6; index += 1) {
-    const frame = control(page, `photo-frame-0${index}`);
+    const frame = await sceneControl(page, `photo-frame-0${index}`);
     await expect(frame).toBeVisible();
     await expect(frame).toHaveText(`Foto ${index}`);
   }
 
   // The last frame opens the gallery at its own photo.
-  await control(page, 'photo-frame-06').click();
+  await (await sceneControl(page, 'photo-frame-06')).click();
   const dialog = page.getByRole('dialog', { name: 'Galeri Foto' });
   await expect(dialog.getByTestId('gallery-progress')).toHaveText('6 / 6');
   await page.keyboard.press('Escape');
@@ -145,12 +141,12 @@ test('[T-301] garden/hall hotspots open event, booth and guestbook overlays', as
   const status = page.getByTestId('world-status');
   await expectScene(status, 'entrance');
 
-  await control(page, 'front-door').click();
+  await (await sceneControl(page, 'front-door')).click();
   await expectScene(status, 'living-room');
-  await control(page, 'garden-door').click();
+  await (await sceneControl(page, 'garden-door')).click();
   await expectScene(status, 'wedding-garden');
 
-  await control(page, 'ceremony-info').click();
+  await (await sceneControl(page, 'ceremony-info')).click();
   const events = page.getByRole('dialog', { name: 'Info Acara' });
   await expect(events.locator('[data-event-id="ceremony-1"]')).toHaveAttribute(
     'aria-current',
@@ -159,19 +155,19 @@ test('[T-301] garden/hall hotspots open event, booth and guestbook overlays', as
   await page.keyboard.press('Escape');
   await expect(events).toHaveCount(0);
 
-  await control(page, 'photo-booth').click();
+  await (await sceneControl(page, 'photo-booth')).click();
   const booth = page.getByRole('dialog', { name: 'Photo Booth' });
   await expect(booth.getByText('Segera hadir')).toBeVisible();
   await expect(booth).toContainText('tidak akan pernah menggunakan kamera');
   await page.keyboard.press('Escape');
   await expect(booth).toHaveCount(0);
 
-  await control(page, 'back-to-living').click();
+  await (await sceneControl(page, 'back-to-living')).click();
   await expectScene(status, 'living-room');
-  await control(page, 'hall-door').click();
+  await (await sceneControl(page, 'hall-door')).click();
   await expectScene(status, 'reception-hall');
 
-  await control(page, 'wish-book').click();
+  await (await sceneControl(page, 'wish-book')).click();
   const guestbook = page.getByRole('dialog', { name: 'Buku Tamu' });
   await expect(guestbook.getByText('Khusus tamu undangan')).toBeVisible();
   await expect(guestbook.locator('form, input, textarea, select')).toHaveCount(0);

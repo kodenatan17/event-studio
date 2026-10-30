@@ -4,10 +4,10 @@ import type { WeddingManifestV1 } from '@undangan/contracts';
 import type { WorldAction } from '@undangan/contracts/world';
 import { Button } from '@undangan/ui';
 import { OverlayHost } from '@undangan/wedding-features';
-import type { WorldStatus } from '@undangan/world-engine';
+import type { WorldStatus as WorldStatusValue, WorldStore } from '@undangan/world-engine';
 import { createWorldStore, detectWebGL, useWorldStore } from '@undangan/world-engine';
 import dynamic from 'next/dynamic';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 
 import { isActionEnabled } from '@/lib/action-enabled';
@@ -16,9 +16,12 @@ import { readSoundPreference } from '@/lib/sound-preference';
 
 import { Fallback2D } from './Fallback2D';
 import { GlobalNav } from './GlobalNav';
+import { KeyboardHint } from './KeyboardHint';
 import { QuickMapDialog } from './QuickMapDialog';
 import { SceneActions } from './SceneActions';
+import { TouchControls } from './TouchControls';
 import { useOverlayHistory } from './use-overlay-history';
+import { WorldStatus } from './WorldStatus';
 
 const WorldCanvas = dynamic(() => import('@undangan/world-engine/canvas'), {
   ssr: false,
@@ -33,7 +36,7 @@ interface ViewerProps {
   children?: ReactNode;
 }
 
-function statusText(status: WorldStatus, sceneId: string | null): string {
+function statusText(status: WorldStatusValue, sceneId: string | null): string {
   const label = sceneId ? sceneLabel(sceneId) : 'dunia undangan';
   switch (status) {
     case 'BOOT':
@@ -52,6 +55,27 @@ function statusText(status: WorldStatus, sceneId: string | null): string {
   }
 }
 
+/**
+ * GLB download bar in the (aria-hidden) veil; the status line keeps announcing the scene. Its
+ * own component, so progress events never re-render the Viewer.
+ */
+function LoadProgress({ store }: { store: WorldStore }) {
+  const progress = useWorldStore(store, (state) => state.loadProgress);
+  if (progress === null) return null;
+  const percent = Math.round(progress * 100);
+  return (
+    <div data-testid="load-progress" className="flex w-48 flex-col items-center gap-1">
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#fbf7ee]/60">
+        <div
+          className="h-full rounded-full bg-[#7a4a2a] transition-[width] duration-200 motion-reduce:transition-none"
+          style={{ width: `${percent}%` }}
+        />
+      </div>
+      <p className="text-xs tabular-nums">{percent}%</p>
+    </div>
+  );
+}
+
 export function Viewer({ manifest, initialMode = '3d', children }: ViewerProps) {
   const { world, wedding, features } = manifest;
   const [store] = useState(() =>
@@ -64,12 +88,22 @@ export function Viewer({ manifest, initialMode = '3d', children }: ViewerProps) 
   const status = useWorldStore(store, (state) => state.status);
   const currentSceneId = useWorldStore(store, (state) => state.currentSceneId);
   const pendingSceneId = useWorldStore(store, (state) => state.pendingSceneId);
-  const requestId = useWorldStore(store, (state) => state.transitionRequestId);
-  const glGeometries = useWorldStore(store, (state) => state.glGeometries);
   const activeOverlay = useWorldStore(store, (state) => state.activeOverlay);
   const fallbackReason = useWorldStore(store, (state) => state.fallbackReason);
   /** Focus target when an overlay closes and its opener is gone (e.g. opened by a 3D tap). */
   const worldRef = useRef<HTMLDivElement>(null);
+  const interactionsId = useId();
+  // Mobile "Interaksi" panel, open for one scene: it closes by itself once the scene changes.
+  const [interactionsFor, setInteractionsFor] = useState<string | null>(null);
+  const interactionsOpen = interactionsFor !== null && interactionsFor === currentSceneId;
+  const toggleInteractions = useCallback(
+    () =>
+      setInteractionsFor((open) =>
+        open !== null && open === currentSceneId ? null : currentSceneId,
+      ),
+    [currentSceneId],
+  );
+  const closeInteractions = useCallback(() => setInteractionsFor(null), []);
 
   useEffect(() => {
     const api = store.getState();
@@ -133,14 +167,16 @@ export function Viewer({ manifest, initialMode = '3d', children }: ViewerProps) 
               ) : null}
             </div>
 
-            {/* Transition veil (architecture.md §8.4); text is announced by the status element. */}
+            {/* Transition veil (architecture.md §8.4); text is announced by the status element. It
+                covers instantly (no empty-sky flash) and fades out only once the scene is ready. */}
             <div
               aria-hidden="true"
-              className={`pointer-events-none absolute inset-0 flex items-center justify-center bg-[#f4b98a] transition-opacity duration-300 motion-reduce:transition-none ${
-                loading ? 'opacity-100' : 'opacity-0'
+              className={`pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#f4b98a] transition-opacity motion-reduce:transition-none ${
+                loading ? 'opacity-100 duration-0' : 'opacity-0 duration-500'
               }`}
             >
               <p className="rounded-full bg-[#fbf7ee]/80 px-4 py-2 text-sm">{message}</p>
+              {loading ? <LoadProgress store={store} /> : null}
             </div>
 
             <header
@@ -156,6 +192,15 @@ export function Viewer({ manifest, initialMode = '3d', children }: ViewerProps) 
                   {wedding.couple.groom} &amp; {wedding.couple.bride}
                 </h1>
               </div>
+              {/* Where am I (§3.3 breadcrumb); the quick map lists every scene. */}
+              {currentSceneId ? (
+                <p
+                  data-testid="scene-chip"
+                  className="-mt-1 rounded-full bg-[#fbf7ee]/90 px-3 py-0.5 text-xs font-medium text-[#4e2c18] shadow-sm"
+                >
+                  {sceneLabel(currentSceneId)}
+                </p>
+              ) : null}
             </header>
 
             {status === 'ERROR' ? (
@@ -182,24 +227,29 @@ export function Viewer({ manifest, initialMode = '3d', children }: ViewerProps) 
               data-testid="viewer-controls"
               className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col gap-2 px-3 pt-2 pb-[calc(env(safe-area-inset-bottom)_+_0.5rem)]"
             >
-              <SceneActions store={store} scenes={world.scenes} isActionEnabled={actionEnabled} />
-              <GlobalNav store={store} rsvpEnabled={features.rsvpEnabled} />
+              <TouchControls store={store} hidden={interactionsOpen} />
+              <KeyboardHint store={store} />
+              <SceneActions
+                store={store}
+                scenes={world.scenes}
+                isActionEnabled={actionEnabled}
+                id={interactionsId}
+                open={interactionsOpen}
+                onClose={closeInteractions}
+              />
+              <GlobalNav
+                store={store}
+                rsvpEnabled={features.rsvpEnabled}
+                interactionsId={interactionsId}
+                interactionsOpen={interactionsOpen}
+                onToggleInteractions={toggleInteractions}
+              />
             </div>
           </>
         )}
       </div>
 
-      <div
-        data-testid="world-status"
-        aria-live="polite"
-        className="sr-only"
-        data-world-status={status}
-        data-scene-id={currentSceneId ?? ''}
-        data-request-id={requestId}
-        data-gl-geometries={glGeometries ?? ''}
-      >
-        {message}
-      </div>
+      <WorldStatus store={store} message={message} />
 
       {activeOverlay?.type === 'quick_map' ? (
         <QuickMapDialog
@@ -208,7 +258,7 @@ export function Viewer({ manifest, initialMode = '3d', children }: ViewerProps) 
           onClose={closeOverlay}
           fallbackFocus={worldRef}
         />
-      ) : activeOverlay ? (
+      ) : activeOverlay?.type === 'avatar_editor' ? null : activeOverlay ? (
         <OverlayHost
           key={activeOverlay.type}
           overlay={activeOverlay}

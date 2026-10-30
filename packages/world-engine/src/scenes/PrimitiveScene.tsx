@@ -6,6 +6,8 @@ import { Vector3 } from 'three';
 import type { Mesh } from 'three';
 
 import { devWarn } from '../dev';
+import { footprintAabb, tagKey } from '../interaction/nearby';
+import type { Interactable } from '../interaction/nearby';
 import type { InteractiveTag } from '../interaction/registry';
 import {
   pickInteractive,
@@ -16,12 +18,14 @@ import {
   toUpperSnake,
 } from '../interaction/registry';
 import { clampToFloor } from '../navigation/walk';
+import type { RenderTier } from '../renderer/capabilities';
 import { FollowCamera } from '../renderer/FollowCamera';
 import { selectInputEnabled } from '../scene-manager/store';
 import type { WorldStore } from '../scene-manager/store';
 import type { NodePlacement, PrimitiveLayout, Vec3 } from '../templates/types';
 import { Avatar, AVATAR_RADIUS, Marker } from './Avatar';
 import { Decor } from './decor/Decor';
+import { INDICATOR_SCALE, updateIndicators } from './indicators';
 import { noRaycast, setCursor, TAP_SLOP_PX } from './input';
 import { extraMaterials, geometries, highlightMaterial, materials } from './materials';
 
@@ -31,6 +35,7 @@ interface PrimitiveSceneProps {
   layout: PrimitiveLayout;
   spawnPointId: string | null;
   reducedMotion: boolean;
+  tier: RenderTier;
   /** Same filter as the HTML controls: rejected hotspots get no mesh and no raycast. */
   isActionEnabled?: (action: WorldAction) => boolean;
 }
@@ -88,6 +93,7 @@ export function PrimitiveScene({
   layout,
   spawnPointId,
   reducedMotion,
+  tier,
   isActionEnabled,
 }: PrimitiveSceneProps) {
   const [spawn] = useState(
@@ -98,10 +104,25 @@ export function PrimitiveScene({
   );
   const avatarPosition = useRef(new Vector3(spawn[0], 0, spawn[1]));
   const nodes = useInteractiveNodes(scene, layout, isActionEnabled);
+  const interactables = useMemo<Interactable[]>(
+    () =>
+      nodes.map((node) => ({
+        tag: node.tag,
+        action: node.action,
+        ...footprintAabb(node.placement.position, node.placement.size, node.placement.rotationY),
+      })),
+    [nodes],
+  );
   const indicators = useRef<(Mesh | null)[]>([]);
+  const hovered = useRef<string | null>(null);
 
   // Reset the hover cursor when the scene unmounts mid-hover.
   useEffect(() => () => setCursor(''), []);
+
+  const handleHover = useCallback((tag: InteractiveTag | null) => {
+    hovered.current = tag ? tagKey(tag) : null;
+    setCursor(tag ? 'pointer' : '');
+  }, []);
 
   const handleInteractive = useCallback(
     (event: ThreeEvent<MouseEvent>) => {
@@ -125,17 +146,20 @@ export function PrimitiveScene({
     [store, layout],
   );
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock }, delta) => {
     const t = clock.elapsedTime;
     highlightMaterial.opacity = reducedMotion
       ? 0.26
       : 0.16 + 0.16 * (0.5 + 0.5 * Math.sin(t * 2.4));
-    indicators.current.forEach((mesh) => {
-      if (!mesh) return;
-      const baseY = mesh.userData.baseY as number;
-      mesh.position.y = reducedMotion ? baseY : baseY + 0.08 * Math.sin(t * 2);
-      mesh.rotation.y = reducedMotion ? 0 : t;
-    });
+    const nearby = store.getState().nearby;
+    updateIndicators(
+      indicators.current,
+      t,
+      delta,
+      nearby ? tagKey(nearby) : null,
+      hovered.current,
+      reducedMotion,
+    );
   });
 
   const { floor } = layout;
@@ -170,13 +194,22 @@ export function PrimitiveScene({
           key={`${node.tag.kind}:${node.tag.id}`}
           node={node}
           onClick={handleInteractive}
-          onHover={setCursor}
+          onHover={handleHover}
           indicatorRef={(mesh) => {
             indicators.current[index] = mesh;
           }}
         />
       ))}
-      <Avatar store={store} colliders={layout.colliders} spawn={spawn} position={avatarPosition} />
+      <Avatar
+        store={store}
+        colliders={layout.colliders}
+        floor={layout.floor}
+        spawn={spawn}
+        position={avatarPosition}
+        interactables={interactables}
+        reducedMotion={reducedMotion}
+        tier={tier}
+      />
       <Marker store={store} />
       <FollowCamera
         target={avatarPosition}
@@ -200,7 +233,7 @@ function InteractiveMesh({
 }: {
   node: InteractiveNode;
   onClick: (event: ThreeEvent<MouseEvent>) => void;
-  onHover: (cursor: string) => void;
+  onHover: (tag: InteractiveTag | null) => void;
   indicatorRef: (mesh: Mesh | null) => void;
 }) {
   const { placement, tag } = node;
@@ -217,8 +250,8 @@ function InteractiveMesh({
         scale={placement.size}
         userData={{ interactive: tag }}
         onClick={onClick}
-        onPointerOver={() => onHover('pointer')}
-        onPointerOut={() => onHover('')}
+        onPointerOver={() => onHover(tag)}
+        onPointerOut={() => onHover(null)}
         dispose={null}
       />
       {tag.kind === 'portal' ? <DoorDetails size={placement.size} /> : null}
@@ -234,8 +267,8 @@ function InteractiveMesh({
         geometry={geometries.flower}
         material={extraMaterials.lanternGlow}
         position={[0, indicatorY, 0]}
-        scale={[0.2, 0.3, 0.2]}
-        userData={{ baseY: indicatorY }}
+        scale={INDICATOR_SCALE}
+        userData={{ baseY: indicatorY, tagKey: tagKey(tag) }}
         raycast={noRaycast}
         dispose={null}
       />

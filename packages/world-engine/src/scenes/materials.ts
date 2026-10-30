@@ -8,21 +8,25 @@ import {
   CircleGeometry,
   Color,
   CylinderGeometry,
+  DataTexture,
   DoubleSide,
   Float32BufferAttribute,
   IcosahedronGeometry,
   LatheGeometry,
+  LinearFilter,
   MeshBasicMaterial,
   MeshLambertMaterial,
   OctahedronGeometry,
   PlaneGeometry,
   RingGeometry,
   SphereGeometry,
+  SRGBColorSpace,
   TubeGeometry,
   Vector2,
   Vector3,
 } from 'three';
 
+import { registerGlowMaterial } from '../renderer/glow';
 import type { MaterialKey } from '../templates/types';
 
 /**
@@ -83,6 +87,28 @@ materials.cream.emissive = new Color('#2a2214');
 materials.photo.emissive = new Color('#2a1a0c');
 materials.janur.emissive = new Color('#2c3008');
 
+/** Soft radial blob (64², white with falling alpha), built without a DOM canvas. */
+function radialShadowTexture(size = 64): DataTexture {
+  const data = new Uint8Array(size * size * 4);
+  const center = (size - 1) / 2;
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      const r = Math.min(Math.hypot(x - center, y - center) / center, 1);
+      const index = (y * size + x) * 4;
+      data[index] = 255;
+      data[index + 1] = 255;
+      data[index + 2] = 255;
+      data[index + 3] = Math.round(255 * (1 - r) ** 1.6);
+    }
+  }
+  const texture = new DataTexture(data, size, size);
+  texture.colorSpace = SRGBColorSpace;
+  texture.magFilter = LinearFilter;
+  texture.minFilter = LinearFilter;
+  texture.needsUpdate = true;
+  return texture;
+}
+
 export const extraMaterials = {
   roofUnder: new MeshLambertMaterial({ color: '#5e3420', side: BackSide }),
   janurDouble: new MeshLambertMaterial({ color: SURFACE_COLORS.janur, side: DoubleSide }),
@@ -111,7 +137,20 @@ export const extraMaterials = {
   marker: new MeshBasicMaterial({ color: '#fff3c4', transparent: true, opacity: 0.9 }),
   treeline: new MeshLambertMaterial({ color: '#56703a' }),
   sky: new MeshBasicMaterial({ vertexColors: true, side: BackSide, fog: false, depthWrite: false }),
+  /** Contact shadow under the avatar (no shadow maps, §12); scaled by the jump height. */
+  contactShadow: new MeshBasicMaterial({
+    color: '#3a2416',
+    map: radialShadowTexture(),
+    transparent: true,
+    opacity: 0.55,
+    depthWrite: false,
+  }),
 } as const;
+
+// Lantern glow (also the hotspot indicators) and melati bloom when bloom runs. Melati is near
+// white, so half the gain already lifts it as far above the threshold as the amber lanterns.
+registerGlowMaterial(extraMaterials.lanternGlow);
+registerGlowMaterial(extraMaterials.melati, 0.5);
 
 /** Pulsing halo on interactive hotspots and portals (opacity animated in `PrimitiveScene`). */
 export const highlightMaterial = new MeshBasicMaterial({

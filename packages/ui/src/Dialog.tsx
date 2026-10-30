@@ -81,7 +81,9 @@ export function Dialog({
       aria-labelledby={titleId}
       aria-modal="true"
       onKeyDown={onKeyDown}
-      className={`m-auto max-h-[calc(100dvh_-_1.5rem_-_env(safe-area-inset-top)_-_env(safe-area-inset-bottom))] w-[calc(100%_-_1.5rem)] ${SIZES[size]} flex-col overflow-hidden rounded-2xl border-0 bg-[#fbf7ee] p-0 text-[#2b2118] shadow-2xl transition-opacity duration-200 backdrop:bg-[#2b2118]/55 open:flex motion-reduce:transition-none starting:open:opacity-0`}
+      // Enter animation only (fade, rise, settle; backdrop fades in); exits are instant because
+      // the dialog unmounts on close. Reduced motion skips both transitions.
+      className={`m-auto max-h-[calc(100dvh_-_1.5rem_-_env(safe-area-inset-top)_-_env(safe-area-inset-bottom))] w-[calc(100%_-_1.5rem)] ${SIZES[size]} flex-col overflow-hidden rounded-2xl border-0 bg-[#fbf7ee] p-0 text-[#2b2118] shadow-2xl transition-[opacity,translate,scale] duration-200 ease-out backdrop:bg-[#2b2118]/55 backdrop:transition-opacity backdrop:duration-200 open:flex motion-reduce:transition-none motion-reduce:backdrop:transition-none starting:open:translate-y-3 starting:open:scale-[.98] starting:open:opacity-0 starting:open:backdrop:opacity-0`}
       {...dataAttributes}
     >
       <header className="flex items-center justify-between gap-3 border-b border-[#e6d6c3] py-2 pr-2 pl-[max(1.25rem,env(safe-area-inset-left))]">

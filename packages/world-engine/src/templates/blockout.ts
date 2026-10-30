@@ -225,6 +225,7 @@ const JOGLO_VASES: Vec2[] = [
 const livingRoom: GltfLayout = {
   kind: 'gltf',
   url: '/templates/joglo/1.0.0/living-room.glb',
+  sizeBytes: 1_051_008,
   nodeMap: {
     HS_STORY: 'STORY_BOOK__HS_STORY_BOOK',
     HS_GALLERY_01: 'GALLERY_01__HS_GALLERY_01',

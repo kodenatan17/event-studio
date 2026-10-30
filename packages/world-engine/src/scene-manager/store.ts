@@ -2,7 +2,12 @@ import type { OverlayAction, WorldAction } from '@undangan/contracts/world';
 import { createStore } from 'zustand/vanilla';
 import type { StoreApi } from 'zustand/vanilla';
 
+import { appearanceKey, defaultAppearance, normalizeAppearance } from '../avatar/appearance';
+import type { AvatarAppearance } from '../avatar/appearance';
 import { devWarn } from '../dev';
+import { createInputBus } from '../input/bus';
+import type { InputBus } from '../input/bus';
+import type { InteractiveTag } from '../interaction/registry';
 
 /** Viewer state machine (architecture.md §8.2). */
 export type WorldStatus =
@@ -15,8 +20,11 @@ export type WorldStatus =
   | 'ERROR'
   | 'FALLBACK_2D';
 
-/** `quick_map` is engine-level navigation UI; everything else comes from a `WorldAction`. */
-export type ActiveOverlay = OverlayAction | { type: 'quick_map' };
+/**
+ * `quick_map` and `avatar_editor` are engine-level UI overlays; everything else comes from a
+ * `WorldAction` (architecture.md §8.3).
+ */
+export type ActiveOverlay = OverlayAction | { type: 'quick_map' } | { type: 'avatar_editor' };
 
 export type QualityProfile = 'auto' | 'high' | 'low';
 
@@ -29,6 +37,12 @@ export type TransitionStatus = 'idle' | 'switching' | 'loading' | 'failed';
 /** Floor point `[x, z]` the avatar walks toward. */
 export type FloorPoint = [number, number];
 
+/** Post-processing actually running (`resolveRenderTier`, §12); test hook `data-postfx`. */
+export type PostFx = 'bloom' | 'off';
+
+/** Avatar position probe grid (m). */
+const PROBE_STEP = 0.05;
+
 export interface WorldStateData {
   status: WorldStatus;
   currentSceneId: string | null;
@@ -37,7 +51,8 @@ export interface WorldStateData {
   /** Incremented per accepted transition; callbacks with an older id are stale. */
   transitionRequestId: number;
   activeOverlay: ActiveOverlay | null;
-  avatarPresetId: 'default';
+  /** Guest avatar look (FR-07); always normalised, catalog ids only. */
+  avatarAppearance: AvatarAppearance;
   qualityProfile: QualityProfile;
   soundEnabled: boolean;
   marker: FloorPoint | null;
@@ -45,6 +60,18 @@ export interface WorldStateData {
   fallbackReason: FallbackReason | null;
   /** `gl.info.memory.geometries`, reported by the renderer for leak checks (FR-04). */
   glGeometries: number | null;
+  /**
+   * Keyboard/joystick/button input, mutated in place by input sources and read by the avatar
+   * every frame. Never replace it through `set()` (no per-frame React renders).
+   */
+  input: InputBus;
+  /** Hotspot/portal within reach of the avatar ("Buka"); changes only when the target does. */
+  nearby: InteractiveTag | null;
+  /** Avatar floor position, 0.05 m grid, sampled ≤ 4 Hz (test hook, never per frame). */
+  avatarProbe: FloorPoint | null;
+  postFx: PostFx;
+  /** GLB download progress 0..1 of the current request, or `null` when unknown. */
+  loadProgress: number | null;
 }
 
 export interface WorldActions {
@@ -62,10 +89,17 @@ export interface WorldActions {
   enterFallback(reason: FallbackReason): void;
   exitFallback(): void;
   retry(): void;
+  /** Normalises; a look with the same `appearanceKey` changes nothing. */
+  setAvatarAppearance(appearance: AvatarAppearance): void;
   setQuality(quality: QualityProfile): void;
   setSound(enabled: boolean): void;
   setMarker(marker: FloorPoint | null): void;
   setGlGeometries(count: number): void;
+  setNearby(tag: InteractiveTag | null): void;
+  setAvatarProbe(point: FloorPoint | null): void;
+  setPostFx(postFx: PostFx): void;
+  /** Ignored unless `requestId` is the scene load in flight. */
+  setLoadProgress(requestId: number, progress: number | null): void;
 }
 
 export type WorldState = WorldStateData & WorldActions;
@@ -96,6 +130,9 @@ export const selectInputEnabled = (state: WorldStateData): boolean => state.stat
 
 const LOADING_STATUSES: readonly WorldStatus[] = ['SWITCHING_SCENE', 'LOADING_SCENE'];
 
+const quantize = (value: number): number =>
+  Number((Math.round(value / PROBE_STEP) * PROBE_STEP).toFixed(2));
+
 /** One store per viewer mount; never a module singleton. */
 export function createWorldStore({
   sceneIds,
@@ -103,11 +140,14 @@ export function createWorldStore({
   initialFallbackReason,
 }: WorldStoreOptions): WorldStore {
   const known = new Set(sceneIds);
+  const input = createInputBus();
 
   return createStore<WorldState>()((set, get) => {
     /** Starts a new transition unconditionally; callers enforce the transition rules. */
     const beginTransition = (sceneId: string, spawnPointId?: string | null): number => {
       const requestId = get().transitionRequestId + 1;
+      // Input is locked for the switch (§8.4): held keys and queued taps do not carry over.
+      input.reset();
       set({
         status: 'SWITCHING_SCENE',
         pendingSceneId: sceneId,
@@ -116,6 +156,9 @@ export function createWorldStore({
         activeOverlay: null,
         marker: null,
         error: null,
+        nearby: null,
+        avatarProbe: null,
+        loadProgress: null,
       });
       return requestId;
     };
@@ -132,13 +175,18 @@ export function createWorldStore({
       pendingSpawnPointId: null,
       transitionRequestId: 0,
       activeOverlay: null,
-      avatarPresetId: 'default',
+      avatarAppearance: defaultAppearance(),
       qualityProfile: 'auto',
       soundEnabled: false,
       marker: null,
       error: null,
       fallbackReason: initialFallbackReason ?? null,
       glGeometries: null,
+      input,
+      nearby: null,
+      avatarProbe: null,
+      postFx: 'off',
+      loadProgress: null,
 
       start() {
         if (get().status !== 'BOOT') return;
@@ -204,8 +252,13 @@ export function createWorldStore({
 
       openOverlay(overlay) {
         const { status } = get();
+        // The avatar editor previews the live character, so it needs a ready scene and no other
+        // overlay; the D-027 loading/ERROR exception does not apply to it.
+        if (overlay.type === 'avatar_editor' && status !== 'READY') return;
         if (status === 'READY' || status === 'OVERLAY_OPEN') {
-          set({ activeOverlay: overlay, status: 'OVERLAY_OPEN', marker: null });
+          // Overlays suspend avatar input (§8.2): nothing held or queued survives the dialog.
+          input.reset();
+          set({ activeOverlay: overlay, status: 'OVERLAY_OPEN', marker: null, nearby: null });
         } else if (
           status === 'FALLBACK_2D' ||
           status === 'ERROR' ||
@@ -213,7 +266,8 @@ export function createWorldStore({
         ) {
           // Guests always reach the map, date and RSVP (G-01): 2D mode, a failed scene and an
           // in-flight load keep their status, so closing returns to it and input stays suspended.
-          set({ activeOverlay: overlay, marker: null });
+          input.reset();
+          set({ activeOverlay: overlay, marker: null, nearby: null });
         }
       },
 
@@ -225,6 +279,7 @@ export function createWorldStore({
       enterFallback(reason) {
         const state = get();
         if (state.status === 'FALLBACK_2D' && state.fallbackReason !== 'manual') return;
+        input.reset();
         set({
           status: 'FALLBACK_2D',
           fallbackReason: reason,
@@ -234,6 +289,9 @@ export function createWorldStore({
           pendingSpawnPointId: null,
           activeOverlay: null,
           marker: null,
+          nearby: null,
+          avatarProbe: null,
+          loadProgress: null,
         });
       },
 
@@ -253,6 +311,13 @@ export function createWorldStore({
         );
       },
 
+      setAvatarAppearance(appearance) {
+        const next = normalizeAppearance(appearance);
+        if (appearanceKey(next) !== appearanceKey(get().avatarAppearance)) {
+          set({ avatarAppearance: next });
+        }
+      },
+
       setQuality(qualityProfile) {
         set({ qualityProfile });
       },
@@ -267,6 +332,32 @@ export function createWorldStore({
 
       setGlGeometries(glGeometries) {
         if (get().glGeometries !== glGeometries) set({ glGeometries });
+      },
+
+      setNearby(nearby) {
+        const current = get().nearby;
+        if (current?.kind === nearby?.kind && current?.id === nearby?.id) return;
+        set({ nearby: nearby ? { kind: nearby.kind, id: nearby.id } : null });
+      },
+
+      setAvatarProbe(point) {
+        const next: FloorPoint | null = point ? [quantize(point[0]), quantize(point[1])] : null;
+        const current = get().avatarProbe;
+        if (current?.[0] === next?.[0] && current?.[1] === next?.[1]) return;
+        set({ avatarProbe: next });
+      },
+
+      setPostFx(postFx) {
+        if (get().postFx !== postFx) set({ postFx });
+      },
+
+      setLoadProgress(requestId, progress) {
+        if (!isCurrentLoad(requestId)) return;
+        const next =
+          progress === null || !Number.isFinite(progress)
+            ? null
+            : Math.round(Math.min(Math.max(progress, 0), 1) * 100) / 100;
+        if (get().loadProgress !== next) set({ loadProgress: next });
       },
     };
   });

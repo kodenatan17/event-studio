@@ -9,6 +9,7 @@ export type {
   ActiveOverlay,
   FallbackReason,
   FloorPoint,
+  PostFx,
   QualityProfile,
   TransitionStatus,
   WorldActions,
@@ -19,6 +20,12 @@ export type {
   WorldStoreOptions,
 } from './scene-manager/store';
 export { useWorldStore } from './scene-manager/useWorldStore';
+export { queueAction } from './input/bus';
+export type { InputAction, InputBus } from './input/bus';
+export { joystickVector } from './input/joystick';
+export type { JoystickVector } from './input/joystick';
+export { INTERACT_RADIUS } from './interaction/nearby';
+export type { Interactable } from './interaction/nearby';
 export {
   pickInteractive,
   portalAction,
@@ -31,6 +38,7 @@ export type { InteractiveTag } from './interaction/registry';
 export { clampToFloor, isBlocked, MAX_FRAME_DELTA, stepToward } from './navigation/walk';
 export type { Collider, Rect, StepResult, Vec2 } from './navigation/walk';
 export { detectWebGL, MAX_DPR, resolveDpr, usePrefersReducedMotion } from './renderer/capabilities';
+export type { RenderTier } from './renderer/capabilities';
 export { getSceneLayout, templates } from './templates/blockout';
 export type {
   CameraRig,

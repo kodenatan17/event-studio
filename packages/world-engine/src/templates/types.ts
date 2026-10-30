@@ -122,6 +122,11 @@ export interface GltfLayout {
   /** Same-origin GLB path; plain `GLTFLoader` (no Draco/Meshopt/KTX2 extensions). */
   url: string;
   /**
+   * Uncompressed GLB size in bytes: the loading-progress denominator, because gzip makes
+   * `Content-Length` the compressed size.
+   */
+  sizeBytes?: number;
+  /**
    * Manifest node (`HS_*`, `PORTAL_*`) → GLB node name, or a `triggers` key. Only mapped nodes
    * are interactive; unknown GLB names never resolve to an action (architecture.md §8.3).
    */
