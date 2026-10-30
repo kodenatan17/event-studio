@@ -1,0 +1,5 @@
+# Project-only configuration. Model, reasoning, provider, and permissions inherit
+# from the user's session and managed policy.
+[agents]
+enabled = true
+max_concurrent_threads_per_session = 3
