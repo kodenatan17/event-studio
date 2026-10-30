@@ -3,7 +3,6 @@ import {
   BackSide,
   BoxGeometry,
   BufferGeometry,
-  CapsuleGeometry,
   CatmullRomCurve3,
   CircleGeometry,
   Color,
@@ -46,8 +45,6 @@ export const PALETTE = {
   lantern: '#ffcf7a',
   lotus: '#f3c6d3',
   melati: '#fbf7ee',
-  avatar: '#2f5d62',
-  skin: '#d9a77c',
   janurTip: '#eef3b4',
 } as const;
 
@@ -131,9 +128,6 @@ export const extraMaterials = {
   mandalaB: lambert('#ecd6b4'),
   mandalaC: lambert('#a8643f'),
   mandalaD: lambert('#f3e2c7'),
-  avatar: lambert(PALETTE.avatar),
-  skin: lambert(PALETTE.skin),
-  blangkon: lambert('#3b2a1e'),
   marker: new MeshBasicMaterial({ color: '#fff3c4', transparent: true, opacity: 0.9 }),
   treeline: new MeshLambertMaterial({ color: '#56703a' }),
   sky: new MeshBasicMaterial({ vertexColors: true, side: BackSide, fog: false, depthWrite: false }),
@@ -262,7 +256,6 @@ export const geometries = {
   roofTop: rectFrustum(0.46, 0.1),
   janurPole: new TubeGeometry(janurCurve, 24, 0.06, 6, false),
   drape: new LatheGeometry(drapeProfile, 14, -Math.PI / 2, Math.PI),
-  capsule: new CapsuleGeometry(0.26, 0.7, 4, 12),
   marker: flat(new RingGeometry(0.2, 0.32, 32)),
   sky: skyDome(),
 } as const;

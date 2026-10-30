@@ -20,6 +20,17 @@ export type {
   WorldStoreOptions,
 } from './scene-manager/store';
 export { useWorldStore } from './scene-manager/useWorldStore';
+export {
+  appearanceKey,
+  AVATAR_STORAGE_KEY,
+  parseAvatarAppearance,
+  randomAppearance,
+  withBody,
+  withSlot,
+} from './avatar/appearance';
+export type { AvatarAppearance, SlotChoice } from './avatar/appearance';
+export { SKIN_TONES, SLOTS, WARDROBE, wardrobeItems } from './avatar/wardrobe';
+export type { BodyType, SkinToneId, Slot, WardrobeItem } from './avatar/wardrobe';
 export { queueAction } from './input/bus';
 export type { InputAction, InputBus } from './input/bus';
 export { joystickVector } from './input/joystick';

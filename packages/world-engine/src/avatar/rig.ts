@@ -127,7 +127,7 @@ export const BODY_DIMS: Readonly<Record<BodyType, BodyDims>> = {
       knee: [0.094, 0.488, 0.012],
       ankle: [0.096, 0.08, -0.02],
     },
-    { center: [0, 1.582, 0.006], rx: 0.077, ry: 0.118, rz: 0.098 },
+    { center: [0, 1.582, 0.006], rx: 0.081, ry: 0.118, rz: 0.098 },
   ),
   wanita: dims(
     'wanita',
@@ -147,7 +147,7 @@ export const BODY_DIMS: Readonly<Record<BodyType, BodyDims>> = {
       knee: [0.09, 0.458, 0.012],
       ankle: [0.09, 0.076, -0.02],
     },
-    { center: [0, 1.4865, 0.006], rx: 0.0725, ry: 0.1135, rz: 0.093 },
+    { center: [0, 1.4865, 0.006], rx: 0.077, ry: 0.1135, rz: 0.093 },
   ),
 };
 

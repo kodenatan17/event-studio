@@ -55,7 +55,8 @@ export interface WardrobeVariant {
 
 export interface WardrobeItem {
   id: string;
-  slot: Slot;
+  /** `ornament`: outfit-only pieces (keris, ronce, paes …) that have no guest slot. */
+  slot: Slot | 'ornament';
   bodies: readonly BodyType[];
   /** The first variant is the default. */
   variants?: readonly WardrobeVariant[];
@@ -255,7 +256,8 @@ export const WARDROBE: readonly WardrobeItem[] = [
       { id: 'putih', swatch: '#efe6d6' },
     ],
     tags: ['kebaya'],
-    covers: ['torso', 'arms'],
+    // Lace sleeves: the arms show through.
+    covers: ['torso'],
     guestSelectable: true,
   },
   {
@@ -310,7 +312,121 @@ export const WARDROBE: readonly WardrobeItem[] = [
   },
 ];
 
-const BY_ID = new Map(WARDROBE.map((item) => [item.id, item]));
+/** Wedding attire of the couple figures; never in the guest editor. */
+const VELVET = '#141110';
+
+const FIGURE_ITEMS: readonly WardrobeItem[] = [
+  {
+    id: 'blangkon-pengantin',
+    slot: 'headwear',
+    bodies: PRIA,
+    variants: [{ id: 'sogan', swatch: '#3d2a16', pattern: 'kawung' }],
+    hides: ['hairCrown'],
+    guestSelectable: false,
+  },
+  {
+    id: 'beskap-beludru-bordir',
+    slot: 'top',
+    bodies: PRIA,
+    variants: [{ id: 'hitam', swatch: VELVET }],
+    covers: ['torso', 'arms'],
+    guestSelectable: false,
+  },
+  {
+    id: 'jarik-sogan-pengantin',
+    slot: 'bottom',
+    bodies: PRIA,
+    variants: [{ id: 'parang', swatch: '#3a2414', pattern: 'parang' }],
+    tags: ['skirted'],
+    covers: ['legs'],
+    guestSelectable: false,
+  },
+  { id: 'stagen', slot: 'ornament', bodies: PRIA, guestSelectable: false },
+  { id: 'keris', slot: 'ornament', bodies: PRIA, guestSelectable: false },
+  { id: 'ronce-pria', slot: 'ornament', bodies: PRIA, guestSelectable: false },
+  {
+    id: 'selop-bordir',
+    slot: 'shoes',
+    bodies: BOTH,
+    variants: [{ id: 'hitam', swatch: '#141110' }],
+    covers: ['feet'],
+    guestSelectable: false,
+  },
+  { id: 'sanggul-pengantin', slot: 'hair', bodies: WANITA, guestSelectable: false },
+  { id: 'siger', slot: 'ornament', bodies: WANITA, guestSelectable: false },
+  { id: 'cunduk-mentul', slot: 'ornament', bodies: WANITA, guestSelectable: false },
+  { id: 'paes', slot: 'ornament', bodies: WANITA, guestSelectable: false },
+  {
+    id: 'kebaya-beludru-bordir',
+    slot: 'top',
+    bodies: WANITA,
+    variants: [{ id: 'hitam', swatch: VELVET }],
+    // Lace sleeves: the arms show through.
+    covers: ['torso'],
+    guestSelectable: false,
+  },
+  {
+    id: 'jarik-ekor',
+    slot: 'bottom',
+    bodies: WANITA,
+    variants: [{ id: 'parang', swatch: '#3a2414', pattern: 'parang' }],
+    tags: ['skirted'],
+    covers: ['legs'],
+    guestSelectable: false,
+  },
+  { id: 'ronce-panjang', slot: 'ornament', bodies: WANITA, guestSelectable: false },
+];
+
+export type FigureOutfitId = 'groom-jawa' | 'bride-jawa';
+
+/** A template character: its look is fixed by the template, not chosen by a guest. */
+export interface FigureOutfit {
+  body: BodyType;
+  skin: SkinToneId;
+  items: readonly { item: string; variant?: string }[];
+  /** Headwear sits on the crown. */
+  hairCrownHidden: boolean;
+  /** Idle clip (`clips.ts`). */
+  clip: 'idle_groom' | 'idle_bride';
+}
+
+export const FIGURE_OUTFITS: Readonly<Record<FigureOutfitId, FigureOutfit>> = {
+  'groom-jawa': {
+    body: 'pria',
+    skin: 'sawo-terang',
+    hairCrownHidden: true,
+    clip: 'idle_groom',
+    items: [
+      { item: 'rapi' },
+      { item: 'blangkon-pengantin' },
+      { item: 'beskap-beludru-bordir' },
+      { item: 'jarik-sogan-pengantin' },
+      { item: 'stagen' },
+      { item: 'keris' },
+      { item: 'ronce-pria' },
+      { item: 'selop-bordir' },
+    ],
+  },
+  'bride-jawa': {
+    body: 'wanita',
+    skin: 'kuning',
+    hairCrownHidden: false,
+    clip: 'idle_bride',
+    items: [
+      { item: 'sanggul-pengantin' },
+      { item: 'siger' },
+      { item: 'cunduk-mentul' },
+      { item: 'paes' },
+      { item: 'kebaya-beludru-bordir' },
+      { item: 'jarik-ekor' },
+      { item: 'ronce-panjang' },
+      { item: 'selop-bordir' },
+      { item: 'anting', variant: 'emas' },
+    ],
+  },
+};
+
+const BY_ID = new Map([...WARDROBE, ...FIGURE_ITEMS].map((item) => [item.id, item]));
 
 export function wardrobeItem(id: string): WardrobeItem | undefined {
   return BY_ID.get(id);

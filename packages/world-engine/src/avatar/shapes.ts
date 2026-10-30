@@ -9,6 +9,9 @@ import {
 } from 'three';
 import type { Curve } from 'three';
 
+import { BONE, joint } from './rig';
+import type { BodyDims, BoneName } from './rig';
+
 /**
  * Geometry helpers for the procedural characters: elliptic "ring surfaces" (lathe-like shells
  * with separate width, front and back depth per height), variable-radius curve tubes, mirroring,
@@ -18,15 +21,15 @@ import type { Curve } from 'three';
 export type Influence = readonly [bone: number, weight: number];
 /** Skin weights for a rest-pose point (root space). */
 export type WeightFn = (point: Vector3) => readonly Influence[];
-export type ColorFn = (point: Vector3) => Color;
+export type ColorFn = (point: Vector3, index: number) => Color;
 
-/** Opaque row of the lace alpha map (`uv1` default): parts without lace never cut out. */
-const OPAQUE_UV1: readonly [number, number] = [0.5, 1];
+/** `uv1` default; only lace parts sample it, and they set their own. */
+const DEFAULT_UV1: readonly [number, number] = [0, 0];
 
 export interface FinalizeOptions {
   /** Vertex colour (multiplies the material colour/map); white when omitted. */
   color?: Color | ColorFn;
-  /** Second UV set (lace alpha map); `OPAQUE_UV1` when omitted. */
+  /** Second UV set (lace alpha map); `DEFAULT_UV1` when omitted. */
   uv1?: (point: Vector3, index: number) => readonly [number, number];
 }
 
@@ -59,9 +62,9 @@ export function finalize(
   for (let i = 0; i < count; i += 1) {
     point.fromBufferAttribute(position, i);
     const color =
-      typeof options.color === 'function' ? options.color(point) : (options.color ?? white);
+      typeof options.color === 'function' ? options.color(point, i) : (options.color ?? white);
     colors.set([color.r, color.g, color.b], i * 3);
-    const second = options.uv1 ? options.uv1(point, i) : OPAQUE_UV1;
+    const second = options.uv1 ? options.uv1(point, i) : DEFAULT_UV1;
     uv1.set(second, i * 2);
     const influences = [...weights(point)]
       .filter(([, weight]) => weight > 1e-4)
@@ -187,6 +190,8 @@ export interface RingSurfaceOptions {
   /** Per-column boundaries (necklines, hems); default the first/last profile height. */
   bottom?: (theta: number) => number;
   top?: (theta: number) => number;
+  /** Open shell between two column angles (`[start, end]`, radians); default the full ring. */
+  arc?: readonly [number, number];
   /** Row distribution 0..1 → 0..1 (e.g. denser near the face). */
   rowEase?: (t: number) => number;
   /** Texture repeats around the shell and metres per v (batik scale). */
@@ -200,8 +205,14 @@ export interface RingSurfaceOptions {
 }
 
 /** Column angle with optional front packing; monotonic over [0, 2π]. */
-function columnAngle(j: number, segments: number, bias: number): number {
+function columnAngle(
+  j: number,
+  segments: number,
+  bias: number,
+  arc: readonly [number, number] | undefined,
+): number {
   const s = j / segments;
+  if (arc) return lerp(arc[0], arc[1], s);
   return 2 * Math.PI * s - bias * Math.sin(2 * Math.PI * s);
 }
 
@@ -221,7 +232,7 @@ export function ringSurface(profile: readonly Ring[], options: RingSurfaceOption
   const y0 = profile[0]!.y;
   const y1 = profile[profile.length - 1]!.y;
   for (let j = 0; j < columns; j += 1) {
-    const theta = columnAngle(j, segments, frontBias);
+    const theta = columnAngle(j, segments, frontBias, options.arc);
     const bottom = options.bottom?.(theta) ?? y0;
     const top = options.top?.(theta) ?? y1;
     for (let i = 0; i <= rows; i += 1) {
@@ -253,7 +264,7 @@ export function ringSurface(profile: readonly Ring[], options: RingSurfaceOption
   geometry.setAttribute('uv', new Float32BufferAttribute(uvs, 2));
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
-  weldSeamNormals(geometry, rows, columns);
+  if (!options.arc) weldSeamNormals(geometry, rows, columns);
   return geometry;
 }
 
@@ -352,17 +363,62 @@ export function curveTube(curve: Curve<Vector3>, options: CurveTubeOptions): Buf
 export function mirrorX(source: BufferGeometry): BufferGeometry {
   const geometry = source.clone();
   geometry.scale(-1, 1, 1);
-  const index = geometry.getIndex();
-  if (index) {
-    const array = index.array;
-    for (let i = 0; i < array.length; i += 3) {
-      const swap = array[i + 1]!;
-      array[i + 1] = array[i + 2]!;
-      array[i + 2] = swap;
-    }
-    index.needsUpdate = true;
+  if (!geometry.getIndex()) {
+    geometry.setIndex(new BufferAttribute(range(geometry.getAttribute('position').count), 1));
   }
+  const index = geometry.getIndex()!;
+  const array = index.array;
+  for (let i = 0; i < array.length; i += 3) {
+    const swap = array[i + 1]!;
+    array[i + 1] = array[i + 2]!;
+    array[i + 2] = swap;
+  }
+  index.needsUpdate = true;
   return geometry;
+}
+
+/**
+ * Skin weights along a chain of joints: a point belongs to the segment it projects on (driven by
+ * the bone at the segment's start) and blends 2 bones over the `band` share of a segment nearest
+ * each joint; on a joint the two bones weigh the same.
+ */
+export function chainWeights(dims: BodyDims, chain: readonly BoneName[], band = 0.15): WeightFn {
+  const points = chain.map((name) => joint(dims, name));
+  const bones = chain.map((name) => BONE[name]);
+  const last = chain.length - 2;
+  const a = new Vector3();
+  const closest = new Vector3();
+  return (point) => {
+    let segment = 0;
+    let along = 0;
+    let best = Infinity;
+    for (let i = 0; i <= last; i += 1) {
+      a.copy(points[i + 1]!).sub(points[i]!);
+      const t = clamp01(point.clone().sub(points[i]!).dot(a) / a.lengthSq());
+      closest.copy(points[i]!).addScaledVector(a, t);
+      const distance = closest.distanceToSquared(point);
+      if (distance < best) {
+        best = distance;
+        segment = i;
+        along = t;
+      }
+    }
+    if (along > 1 - band) {
+      const share = 0.5 * smoothstep(1 - band, 1, along);
+      return [
+        [bones[segment]!, 1 - share],
+        [bones[segment + 1]!, share],
+      ];
+    }
+    if (segment > 0 && along < band) {
+      const share = 0.5 * smoothstep(band, 0, along);
+      return [
+        [bones[segment]!, 1 - share],
+        [bones[segment - 1]!, share],
+      ];
+    }
+    return [[bones[segment]!, 1]];
+  };
 }
 
 /** Displaces positions in place and recomputes normals. */

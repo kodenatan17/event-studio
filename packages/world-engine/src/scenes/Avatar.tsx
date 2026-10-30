@@ -1,15 +1,14 @@
 import { useFrame } from '@react-three/fiber';
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import type { RefObject } from 'react';
 import { Vector3 } from 'three';
 import type { Group, Mesh } from 'three';
 
-import { createPlaceholderAnimator } from '../avatar/placeholderAnimator';
-import type { AvatarAnimator } from '../avatar/placeholderAnimator';
+import { useCharacter } from '../avatar/useCharacter';
 import { combineMovement, keyboardVector, toWorldDirection } from '../input/movement';
 import { nearestInteractable } from '../interaction/nearby';
 import type { Interactable } from '../interaction/nearby';
-import { JUMP_HEIGHT, stepMotion } from '../navigation/motion';
+import { dampAngle, JUMP_HEIGHT, stepMotion } from '../navigation/motion';
 import type { MotionState } from '../navigation/motion';
 import type { Collider, Rect, Vec2 } from '../navigation/walk';
 import type { RenderTier } from '../renderer/capabilities';
@@ -23,6 +22,7 @@ export const AVATAR_RADIUS = 0.3;
 /** `avatarProbe` sample interval (s): ≤ 4 Hz store writes. */
 const PROBE_INTERVAL = 0.25;
 const SHADOW_SCALE = 0.9;
+const PREVIEW_TURN_RATE = 14;
 
 interface AvatarProps {
   store: WorldStore;
@@ -37,15 +37,15 @@ interface AvatarProps {
   /** Hotspots/portals reachable with "Buka" / E (same actions as their HTML controls). */
   interactables: readonly Interactable[];
   reducedMotion: boolean;
-  /** Character quality tier; the rigged character (T-401) builds from it. */
+  /** Character quality tier. */
   tier: RenderTier;
 }
 
 /**
- * Capsule placeholder avatar (until T-401): tap-to-move, WASD/arrows and the joystick with
- * clamped delta and colliders (FR-04, §8.4), jump/wave/interact through the animator seam, the
- * nearby hotspot for "Buka", and a contact shadow. Input is read from the store's mutable bus;
- * only `nearby` (on change) and the ≤ 4 Hz probe are written back.
+ * The guest's character (FR-07): tap-to-move, WASD/arrows and the joystick with clamped delta and
+ * colliders (FR-04, §8.4), jump/wave/interact clips, the nearby hotspot for "Buka", and a contact
+ * shadow. Input is read from the store's mutable bus; only `nearby` (on change) and the ≤ 4 Hz
+ * probe are written back.
  */
 export function Avatar({
   store,
@@ -56,26 +56,19 @@ export function Avatar({
   position,
   interactables,
   reducedMotion,
+  tier,
 }: AvatarProps) {
   const group = useRef<Group>(null);
   const lift = useRef<Group>(null);
   const body = useRef<Group>(null);
   const shadow = useRef<Mesh>(null);
-  const animator = useRef<AvatarAnimator | null>(null);
+  const appearance = useWorldStore(store, (state) => state.avatarAppearance);
+  const character = useCharacter(store, body, appearance, tier, reducedMotion);
   const motion = useRef<MotionState>({ position: spawn, yaw: 0, height: 0, verticalSpeed: 0 });
   const probeElapsed = useRef(PROBE_INTERVAL);
   const forward = useRef(new Vector3());
-
-  // One animator per mounted avatar; StrictMode's extra mount/unmount leaves exactly one.
-  useEffect(() => {
-    if (!body.current) return;
-    const created = createPlaceholderAnimator(body.current, { reducedMotion });
-    animator.current = created;
-    return () => {
-      created.dispose();
-      if (animator.current === created) animator.current = null;
-    };
-  }, [reducedMotion]);
+  const shownYaw = useRef(0);
+  const turning = useRef(false);
 
   useFrame(({ camera }, delta) => {
     const avatar = group.current;
@@ -110,13 +103,27 @@ export function Avatar({
     const [x, z] = step.state.position;
     position.current.set(x, floorY, z);
     avatar.position.copy(position.current);
-    avatar.rotation.y = step.state.yaw;
+    // The avatar editor turns the character to the camera, plus the guest's own rotation; it
+    // eases there and back, and walking keeps the facing `stepMotion` already damped.
+    const previewing = state.activeOverlay?.type === 'avatar_editor';
+    if (previewing) turning.current = true;
+    const facing = previewing
+      ? Math.atan2(camera.position.x - x, camera.position.z - z) + input.preview.yaw
+      : step.state.yaw;
+    if (turning.current && !reducedMotion) {
+      shownYaw.current = dampAngle(shownYaw.current, facing, PREVIEW_TURN_RATE, delta);
+      const left = Math.sin(shownYaw.current - facing);
+      if (!previewing && Math.abs(left) < 0.01) turning.current = false;
+    } else {
+      shownYaw.current = facing;
+    }
+    avatar.rotation.y = shownYaw.current;
     if (lift.current) lift.current.position.y = step.state.height;
     if (shadow.current) {
       shadow.current.scale.setScalar(SHADOW_SCALE * (1 - 0.35 * (step.state.height / JUMP_HEIGHT)));
     }
 
-    const anim = animator.current;
+    const anim = character.animator;
     anim?.setLocomotion(step.speed);
     if (step.jumped) anim?.trigger('jump');
     if (enabled) {
@@ -142,7 +149,7 @@ export function Avatar({
   });
 
   return (
-    <group ref={group} name="AVATAR_PLACEHOLDER" position={[spawn[0], floorY, spawn[1]]}>
+    <group ref={group} name="AVATAR" position={[spawn[0], floorY, spawn[1]]}>
       <mesh
         ref={shadow}
         geometry={geometries.disc}
@@ -153,28 +160,7 @@ export function Avatar({
         dispose={null}
       />
       <group ref={lift}>
-        <group ref={body}>
-          <mesh
-            geometry={geometries.capsule}
-            material={extraMaterials.avatar}
-            position={[0, 0.61, 0]}
-            dispose={null}
-          />
-          <mesh
-            geometry={geometries.sphere}
-            material={extraMaterials.skin}
-            position={[0, 1.42, 0]}
-            scale={0.36}
-            dispose={null}
-          />
-          <mesh
-            geometry={geometries.cylinder}
-            material={extraMaterials.blangkon}
-            position={[0, 1.58, 0]}
-            scale={[0.38, 0.1, 0.38]}
-            dispose={null}
-          />
-        </group>
+        <group ref={body} />
       </group>
     </group>
   );

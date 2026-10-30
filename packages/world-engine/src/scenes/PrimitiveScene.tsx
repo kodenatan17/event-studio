@@ -166,7 +166,7 @@ export function PrimitiveScene({
   return (
     <group name={`SCENE_${toUpperSnake(scene.id)}`}>
       {layout.decor.map((item, index) => (
-        <Decor key={index} item={item} />
+        <Decor key={index} item={item} store={store} tier={tier} reducedMotion={reducedMotion} />
       ))}
       <mesh
         name="FLOOR_WALKABLE"
@@ -212,6 +212,7 @@ export function PrimitiveScene({
       />
       <Marker store={store} />
       <FollowCamera
+        store={store}
         target={avatarPosition}
         offset={layout.camera.offset}
         lookHeight={layout.camera.lookHeight}

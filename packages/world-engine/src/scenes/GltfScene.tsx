@@ -339,7 +339,7 @@ function LoadedGltfScene({
   return (
     <group name={`SCENE_${toUpperSnake(scene.id)}`}>
       {layout.decor.map((item, index) => (
-        <Decor key={index} item={item} />
+        <Decor key={index} item={item} store={store} tier={tier} reducedMotion={reducedMotion} />
       ))}
       <group
         onClick={handleClick}
@@ -393,6 +393,7 @@ function LoadedGltfScene({
       />
       <Marker store={store} floorY={floor.y} />
       <FollowCamera
+        store={store}
         target={avatarPosition}
         offset={layout.camera.offset}
         lookHeight={layout.camera.lookHeight}
