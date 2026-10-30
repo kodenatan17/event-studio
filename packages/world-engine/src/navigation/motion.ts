@@ -49,7 +49,7 @@ export interface MotionStep {
 }
 
 /** Shortest-arc exponential damping toward `target`, result in (−π, π]. */
-function dampAngle(current: number, target: number, rate: number, dt: number): number {
+export function dampAngle(current: number, target: number, rate: number, dt: number): number {
   const turn = Math.atan2(Math.sin(target - current), Math.cos(target - current));
   const next = current + turn * (1 - Math.exp(-rate * dt));
   return Math.atan2(Math.sin(next), Math.cos(next));

@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { selectInputEnabled } from '../scene-manager/store';
 import type { WorldStore } from '../scene-manager/store';
 import { queueAction } from './bus';
-import { keyBinding, preventsDefault, shouldHandleKeyDown } from './keyboard';
+import { keyBinding, preventsDefault, releasesHeldKeys, shouldHandleKeyDown } from './keyboard';
 
 /**
  * WASD/arrows, Space, E/Enter and Q on the window (FR-04). Writes the store's input bus only;
@@ -11,7 +11,13 @@ import { keyBinding, preventsDefault, shouldHandleKeyDown } from './keyboard';
  */
 export function useKeyboardInput(store: WorldStore): void {
   useEffect(() => {
+    // A key released while the window had no focus, or under Meta, never sends key-up.
+    const releaseAll = () => store.getState().input.keys.clear();
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (releasesHeldKeys(event.key)) {
+        releaseAll();
+        return;
+      }
       const state = store.getState();
       if (!shouldHandleKeyDown(event, selectInputEnabled(state))) return;
       const binding = keyBinding(event.code);
@@ -21,10 +27,9 @@ export function useKeyboardInput(store: WorldStore): void {
       if (preventsDefault(event.code)) event.preventDefault();
     };
     const handleKeyUp = (event: KeyboardEvent) => {
-      store.getState().input.keys.delete(event.code);
+      if (releasesHeldKeys(event.key)) releaseAll();
+      else store.getState().input.keys.delete(event.code);
     };
-    // A key released while the window had no focus never sends key-up.
-    const releaseAll = () => store.getState().input.keys.clear();
     const handleVisibility = () => {
       if (document.visibilityState === 'hidden') releaseAll();
     };

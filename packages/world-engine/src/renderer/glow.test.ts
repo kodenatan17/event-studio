@@ -1,7 +1,7 @@
 import { Color } from 'three';
 import { describe, expect, it } from 'vitest';
 
-import { registerGlowMaterial, setGlowGain } from './glow';
+import { registerGlowMaterial, setGlowGain, unregisterGlowMaterial } from './glow';
 
 describe('glow', () => {
   it('[§12] glow gain lifts registered accents only while bloom runs, then restores them', () => {
@@ -18,5 +18,16 @@ describe('glow', () => {
     setGlowGain(1);
     expect(lantern.color.toArray()).toEqual([1, 0.5, 0.2]);
     expect(melati.color.toArray()).toEqual([1, 1, 1]);
+  });
+
+  it('[§12] an unregistered accent gets its colour back and ignores the gain', () => {
+    const accent = { color: new Color(0.5, 0.5, 0.5) };
+    registerGlowMaterial(accent);
+    setGlowGain(2);
+    unregisterGlowMaterial(accent);
+    expect(accent.color.r).toBeCloseTo(0.5);
+    setGlowGain(1.8);
+    expect(accent.color.r).toBeCloseTo(0.5);
+    setGlowGain(1);
   });
 });

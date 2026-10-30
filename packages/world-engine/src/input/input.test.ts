@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { createInputBus, queueAction } from './bus';
 import { joystickVector } from './joystick';
-import { shouldHandleKeyDown } from './keyboard';
+import { releasesHeldKeys, shouldHandleKeyDown } from './keyboard';
 import type { KeyEventLike } from './keyboard';
 import { combineMovement, keyboardVector, toWorldDirection } from './movement';
 
@@ -103,6 +103,13 @@ describe('input', () => {
     // Auto-repeat never re-fires one-shot actions; held movement keys may repeat.
     expect(shouldHandleKeyDown(key('KeyE', { repeat: true }), true)).toBe(false);
     expect(shouldHandleKeyDown(key('KeyW', { repeat: true }), true)).toBe(true);
+  });
+
+  it('[FR-04] Meta releases held keys (macOS sends no key-up)', () => {
+    expect(releasesHeldKeys('Meta')).toBe(true);
+    for (const key of ['Shift', 'Control', 'Alt', 'w']) {
+      expect(releasesHeldKeys(key), key).toBe(false);
+    }
   });
 
   it('[FR-04] action queue is capped and reset clears everything', () => {

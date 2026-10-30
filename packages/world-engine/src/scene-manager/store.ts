@@ -60,6 +60,10 @@ export interface WorldStateData {
   fallbackReason: FallbackReason | null;
   /** `gl.info.memory.geometries`, reported by the renderer for leak checks (FR-04). */
   glGeometries: number | null;
+  /** `appearanceKey` of the character actually built in the scene; null while there is none. */
+  characterKey: string | null;
+  /** Node names of the template figures standing in the scene (`data-couple`). */
+  figureNodes: readonly string[];
   /**
    * Keyboard/joystick/button input, mutated in place by input sources and read by the avatar
    * every frame. Never replace it through `set()` (no per-frame React renders).
@@ -95,6 +99,9 @@ export interface WorldActions {
   setSound(enabled: boolean): void;
   setMarker(marker: FloorPoint | null): void;
   setGlGeometries(count: number): void;
+  setCharacterKey(key: string | null): void;
+  addFigure(nodeName: string): void;
+  removeFigure(nodeName: string): void;
   setNearby(tag: InteractiveTag | null): void;
   setAvatarProbe(point: FloorPoint | null): void;
   setPostFx(postFx: PostFx): void;
@@ -182,6 +189,8 @@ export function createWorldStore({
       error: null,
       fallbackReason: initialFallbackReason ?? null,
       glGeometries: null,
+      characterKey: null,
+      figureNodes: [],
       input,
       nearby: null,
       avatarProbe: null,
@@ -328,6 +337,22 @@ export function createWorldStore({
 
       setMarker(marker) {
         set({ marker });
+      },
+
+      setCharacterKey(characterKey) {
+        if (get().characterKey !== characterKey) set({ characterKey });
+      },
+
+      addFigure(nodeName) {
+        const { figureNodes } = get();
+        if (!figureNodes.includes(nodeName)) set({ figureNodes: [...figureNodes, nodeName] });
+      },
+
+      removeFigure(nodeName) {
+        const { figureNodes } = get();
+        if (figureNodes.includes(nodeName)) {
+          set({ figureNodes: figureNodes.filter((name) => name !== nodeName) });
+        }
       },
 
       setGlGeometries(glGeometries) {

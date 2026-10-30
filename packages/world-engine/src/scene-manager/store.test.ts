@@ -392,6 +392,18 @@ describe('createWorldStore', () => {
     store.getState().setSound(true);
     expect(store.getState().soundEnabled).toBe(true);
   });
+  it('[§3.3] figures report in and out of the scene', () => {
+    const store = createWorldStore({ sceneIds: ['a'], entrySceneId: 'a' });
+    const { addFigure, removeFigure } = store.getState();
+    addFigure('COUPLE_GROOM');
+    addFigure('COUPLE_GROOM');
+    addFigure('COUPLE_BRIDE');
+    expect(store.getState().figureNodes).toEqual(['COUPLE_GROOM', 'COUPLE_BRIDE']);
+    removeFigure('COUPLE_GROOM');
+    removeFigure('NOT_THERE');
+    expect(store.getState().figureNodes).toEqual(['COUPLE_BRIDE']);
+  });
+
   it('[§8.2] avatar_editor opens only from READY', () => {
     const store = createWorldStore({ sceneIds: SCENES, entrySceneId: 'entrance' });
     store.getState().start();

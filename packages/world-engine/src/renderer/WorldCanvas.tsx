@@ -5,6 +5,7 @@ import type { SceneDefinition, WorldAction } from '@undangan/contracts/world';
 import { Component, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 
+import { clearCharacterCaches } from '../avatar/caches';
 import { useKeyboardInput } from '../input/useKeyboardInput';
 import type { WorldStore } from '../scene-manager/store';
 import { useWorldStore } from '../scene-manager/useWorldStore';
@@ -243,7 +244,9 @@ export function WorldCanvas({ store, scenes, templateId, isActionEnabled }: Worl
   useKeyboardInput(store);
   useEffect(() => {
     store.getState().setPostFx(tier.bloom ? 'bloom' : 'off');
+    return () => store.getState().setPostFx('off');
   }, [store, tier.bloom]);
+  useEffect(() => clearCharacterCaches, []);
 
   return (
     <CanvasErrorBoundary onError={() => store.getState().enterFallback('render_error')}>
@@ -264,13 +267,16 @@ export function WorldCanvas({ store, scenes, templateId, isActionEnabled }: Worl
         <RendererProbes store={store} />
         <Environment />
         {tier.bloom ? <Bloom /> : null}
-        <ActiveScene
-          store={store}
-          scenes={scenes}
-          templateId={templateId}
-          isActionEnabled={isActionEnabled}
-          tier={tier}
-        />
+        {/* After the probe: a scene built on the guessed tier would rebuild its character. */}
+        {softwareRenderer === null ? null : (
+          <ActiveScene
+            store={store}
+            scenes={scenes}
+            templateId={templateId}
+            isActionEnabled={isActionEnabled}
+            tier={tier}
+          />
+        )}
       </Canvas>
     </CanvasErrorBoundary>
   );

@@ -4,9 +4,11 @@ import type { RefObject } from 'react';
 import { PerspectiveCamera, Vector3 } from 'three';
 
 import { MAX_FRAME_DELTA } from '../navigation/walk';
+import type { WorldStore } from '../scene-manager/store';
 import type { Vec3 } from '../templates/types';
 
 interface FollowCameraProps {
+  store: WorldStore;
   /** Avatar position, mutated every frame by the avatar controller. */
   target: RefObject<Vector3>;
   offset: Vec3;
@@ -60,13 +62,44 @@ function framingFor(aspect: number, baseFov: number): Framing {
   };
 }
 
+/** Avatar editor preview: margin around the figure, and what the camera aims at (m). */
+const PREVIEW_FRAME_HEIGHT = 2.4;
+const PREVIEW_CHEST = 0.98;
+/** Preview camera height above the aim point: just enough to see the top of the head. */
+const PREVIEW_RISE = 0.28;
+const PREVIEW_INSET_RATE = 8;
+
+/**
+ * Camera for the avatar editor, on the scene's authored follow side (known to be wall-free) and
+ * never further out than the follow camera. Distance frames the figure in the part of the view
+ * the panel leaves free.
+ */
+function previewPosition(
+  out: Vector3,
+  avatar: Vector3,
+  offset: Vec3,
+  fov: number,
+  freeHeight: number,
+): void {
+  const reach = Math.hypot(offset[0], offset[2]) || 1;
+  const halfFov = (fov * Math.PI) / 360;
+  const distance = Math.min(reach, PREVIEW_FRAME_HEIGHT / (2 * Math.tan(halfFov) * freeHeight));
+  out.set(
+    avatar.x + (offset[0] / reach) * distance,
+    avatar.y + PREVIEW_CHEST + PREVIEW_RISE,
+    avatar.z + (offset[2] / reach) * distance,
+  );
+}
+
 const lean = (value: number): number => Math.max(-MAX_LEAN, Math.min(MAX_LEAN, value));
 
 /**
  * Fixed 3/4 elevated follow view (architecture.md §8.1). Each scene arrival eases in from
- * `ARRIVAL_OFFSET`; reduced motion snaps instead of easing.
+ * `ARRIVAL_OFFSET`; reduced motion snaps instead of easing. While the avatar editor is open the
+ * same camera frames the whole figure, its view shifted clear of the editor panel.
  */
 export function FollowCamera({
+  store,
   target,
   offset,
   lookHeight,
@@ -80,6 +113,7 @@ export function FollowCamera({
   const desired = useRef(new Vector3());
   const lookTarget = useRef(new Vector3());
   const initialized = useRef(false);
+  const inset = useRef({ right: 0, bottom: 0 });
 
   useFrame(({ camera, size }, delta) => {
     const { fov, distance, lift, centerPull } = framingFor(
@@ -101,6 +135,41 @@ export function FollowCamera({
       avatar.z + offset[2] * distance,
     );
     lookTarget.current.set(focusX, avatar.y + lookHeight, avatar.z - lookAhead);
+
+    const state = store.getState();
+    const previewing = state.activeOverlay?.type === 'avatar_editor';
+    const { preview } = state.input;
+    if (previewing) {
+      previewPosition(desired.current, avatar, offset, fov, 1 - preview.insetBottom);
+      lookTarget.current.set(avatar.x, avatar.y + PREVIEW_CHEST, avatar.z);
+    }
+    if (camera instanceof PerspectiveCamera) {
+      const goalRight = previewing ? preview.insetRight : 0;
+      const goalBottom = previewing ? preview.insetBottom : 0;
+      const ease = reducedMotion
+        ? 1
+        : 1 - Math.exp(-Math.min(delta, MAX_FRAME_DELTA) * PREVIEW_INSET_RATE);
+      const view = inset.current;
+      view.right += (goalRight - view.right) * ease;
+      view.bottom += (goalBottom - view.bottom) * ease;
+      const settled = Math.abs(view.right) + Math.abs(view.bottom) < 0.001;
+      if (settled && !previewing) {
+        view.right = 0;
+        view.bottom = 0;
+        if (camera.view?.enabled) camera.clearViewOffset();
+      } else {
+        const { width, height } = size;
+        camera.setViewOffset(
+          width,
+          height,
+          (view.right * width) / 2,
+          (view.bottom * height) / 2,
+          width,
+          height,
+        );
+      }
+    }
+
     if (!initialized.current) {
       camera.position.copy(desired.current);
       if (!reducedMotion) {

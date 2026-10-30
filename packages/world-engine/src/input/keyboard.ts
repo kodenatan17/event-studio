@@ -34,6 +34,11 @@ export function preventsDefault(code: string): boolean {
   return code === 'Space' || code.startsWith('Arrow');
 }
 
+/** macOS sends no key-up for keys released while Meta is down, so they would stick. */
+export function releasesHeldKeys(key: string): boolean {
+  return key === 'Meta';
+}
+
 /** Typing, dialogs: the world never steals these keys. */
 const TEXT_OR_DIALOG =
   'input, textarea, select, [contenteditable]:not([contenteditable="false"]), dialog, [role="dialog"]';

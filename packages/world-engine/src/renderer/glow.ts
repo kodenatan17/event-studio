@@ -26,6 +26,14 @@ export function registerGlowMaterial(material: { color: Color }, weight = 1): vo
   apply(entry);
 }
 
+/** For materials that can be freed; the module-level scene accents stay registered for good. */
+export function unregisterGlowMaterial(material: { color: Color }): void {
+  const index = entries.findIndex((entry) => entry.material === material);
+  if (index < 0) return;
+  material.color.copy(entries[index]!.base);
+  entries.splice(index, 1);
+}
+
 export function setGlowGain(next: number): void {
   gain = next;
   entries.forEach(apply);
