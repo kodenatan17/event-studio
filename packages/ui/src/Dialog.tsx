@@ -4,6 +4,7 @@ import { useEffect, useEffectEvent, useId, useLayoutEffect, useRef, useState } f
 import type { KeyboardEvent, ReactNode, RefObject } from 'react';
 
 import { Button } from './Button';
+import { openModalDialog } from './dialogLifecycle';
 
 export interface DialogProps {
   title: ReactNode;
@@ -62,21 +63,7 @@ export function Dialog({
     const dialog = ref.current;
     if (!dialog) return;
     closedRef.current = false;
-    const handleCancel = (event: Event) => {
-      // Escape: close through React state instead of the native close.
-      event.preventDefault();
-      requestClose();
-    };
-    // Browsers may close without a cancelable `cancel` (close watcher rules).
-    const handleClose = () => requestClose();
-    dialog.addEventListener('cancel', handleCancel);
-    dialog.addEventListener('close', handleClose);
-    if (!dialog.open) dialog.showModal();
-    return () => {
-      dialog.removeEventListener('cancel', handleCancel);
-      dialog.removeEventListener('close', handleClose);
-      if (dialog.open) dialog.close();
-    };
+    return openModalDialog(dialog, () => requestClose());
   }, []);
 
   // Passive cleanup runs after the commit that removes the dialog and the page's `inert`.
