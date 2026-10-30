@@ -4,6 +4,15 @@
 @source '../../../packages/ui/src';
 @source '../../../packages/wedding-features/src';
 
+/* Viewer chrome on phones: `compact` covers portrait (narrow) and landscape (short). */
+@custom-variant short (@media (height < 30rem));
+@custom-variant compact {
+  @media (width < 40rem), (height < 30rem) {
+    @slot;
+  }
+}
+@custom-variant roomy (@media (width >= 40rem) and (height >= 30rem));
+
 html,
 body {
   height: 100%;

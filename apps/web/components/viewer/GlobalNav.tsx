@@ -36,8 +36,8 @@ function ShortLabel({ short, full }: { short: string; full: string }) {
 /**
  * Always-available bottom bar (FR-04 map, FR-05 event info/RSVP from global UI, T-108 manual
  * 2D, T-201 sound). Sound is a stored preference only: no audio asset yet, and playback must
- * still wait for a user gesture (architecture.md §12). Below sm it also holds the "Interaksi"
- * toggle for the scene's hotspot controls.
+ * still wait for a user gesture (architecture.md §12). On phones, in either orientation, it also
+ * holds the "Interaksi" toggle for the scene's hotspot controls.
  */
 export function GlobalNav({
   store,
@@ -72,7 +72,7 @@ export function GlobalNav({
     >
       <Button
         variant="ghost"
-        className={`${ITEM} sm:hidden`}
+        className={`${ITEM} roomy:hidden`}
         aria-expanded={interactionsOpen}
         aria-controls={interactionsId}
         onClick={onToggleInteractions}

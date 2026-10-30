@@ -1,7 +1,7 @@
 'use client';
 
 import type { WorldStore } from '@undangan/world-engine';
-import { useWorldStore } from '@undangan/world-engine';
+import { appearanceKey, useWorldStore } from '@undangan/world-engine';
 
 interface WorldStatusProps {
   store: WorldStore;
@@ -21,6 +21,13 @@ export function WorldStatus({ store, message }: WorldStatusProps) {
   const probe = useWorldStore(store, (state) => state.avatarProbe);
   const nearby = useWorldStore(store, (state) => state.nearby);
   const postFx = useWorldStore(store, (state) => state.postFx);
+  const avatar = useWorldStore(store, (state) => appearanceKey(state.avatarAppearance));
+  const avatarBuilt = useWorldStore(store, (state) => state.characterKey);
+  const couple = useWorldStore(
+    store,
+    (state) =>
+      state.figureNodes.includes('COUPLE_GROOM') && state.figureNodes.includes('COUPLE_BRIDE'),
+  );
 
   return (
     <div
@@ -35,6 +42,9 @@ export function WorldStatus({ store, message }: WorldStatusProps) {
       data-avatar-z={probe ? probe[1].toFixed(2) : ''}
       data-nearby={nearby?.id ?? ''}
       data-postfx={postFx}
+      data-avatar={avatar}
+      data-avatar-built={avatarBuilt ?? ''}
+      data-couple={couple ? 'ready' : ''}
     >
       {message}
     </div>

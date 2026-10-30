@@ -5,7 +5,7 @@ import { joystickVector, queueAction, useWorldStore } from '@undangan/world-engi
 import { useEffect, useRef } from 'react';
 import type { PointerEvent } from 'react';
 
-import { avatarActionLabel, controlLabel } from '@/lib/labels';
+import { avatarActionLabel, interactLabel, interactShortLabel } from '@/lib/labels';
 
 interface TouchControlsProps {
   store: WorldStore;
@@ -17,17 +17,17 @@ interface TouchControlsProps {
 const STICK_RADIUS = 40;
 
 const ACTION =
-  'pointer-events-auto flex items-center justify-center rounded-full bg-[#fbf7ee]/95 text-sm font-semibold ' +
+  'pointer-events-auto flex items-center justify-center rounded-full bg-[#fbf7ee]/95 font-semibold ' +
   'text-[#4e2c18] shadow-lg ring-1 ring-[#4e2c18]/15 transition active:scale-[.94] ' +
   'motion-reduce:transition-none motion-reduce:active:scale-100 aria-disabled:opacity-50 ' +
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4e2c18]';
 
 /**
  * Touch-first controls (`pointer: coarse`, FR-04): an analog stick bottom-left and the action
- * cluster bottom-right ("Lompat", "Buka", "Sapa"). They write the store's input bus only, so
- * dragging never re-renders React. Sits above the bottom bar (`bottom-full`), so the measured
- * canvas area is unchanged. The stick is `aria-hidden`: WASD, floor taps and the labelled HTML
- * controls reach the same places. No backdrop blur: blurring over the live canvas costs frames.
+ * cluster bottom-right ("Lompat", "Buka" or a portal's verb, "Sapa"). They write the store's input
+ * bus only, so dragging never re-renders React. Sits above the bottom bar (`bottom-full`), so the
+ * measured canvas area is unchanged. The stick is `aria-hidden`: WASD, floor taps and the labelled
+ * HTML controls reach the same places. No backdrop blur: blurring over the live canvas costs frames.
  */
 export function TouchControls({ store, hidden = false }: TouchControlsProps) {
   const nearby = useWorldStore(store, (state) => state.nearby);
@@ -72,7 +72,6 @@ export function TouchControls({ store, hidden = false }: TouchControlsProps) {
   );
 
   const act = (action: InputAction) => queueAction(store.getState().input, action);
-  const nearbyLabel = nearby ? controlLabel(nearby.id) : null;
 
   return (
     <div
@@ -107,22 +106,28 @@ export function TouchControls({ store, hidden = false }: TouchControlsProps) {
       </div>
 
       <div className="flex items-end gap-2">
-        <button type="button" className={`${ACTION} mb-14 size-13`} onClick={() => act('wave')}>
+        <button
+          type="button"
+          className={`${ACTION} mb-14 size-13 text-sm`}
+          onClick={() => act('wave')}
+        >
           {avatarActionLabel('wave')}
         </button>
         <button
           type="button"
           // Focusable while disabled, so focus can return here after the opened dialog closes.
-          aria-disabled={nearbyLabel ? undefined : 'true'}
-          className={`${ACTION} mb-6 size-14`}
+          aria-disabled={nearby ? undefined : 'true'}
+          aria-label={nearby ? interactLabel(nearby) : undefined}
+          className={`${ACTION} mb-6 size-14 text-center ${
+            nearby?.kind === 'portal' ? 'text-xs leading-tight' : 'text-sm'
+          }`}
           onClick={() => {
             if (store.getState().nearby) act('interact');
           }}
         >
-          {avatarActionLabel('interact')}
-          {nearbyLabel ? <span className="sr-only"> {nearbyLabel}</span> : null}
+          {interactShortLabel(nearby)}
         </button>
-        <button type="button" className={`${ACTION} size-16`} onClick={() => act('jump')}>
+        <button type="button" className={`${ACTION} size-16 text-sm`} onClick={() => act('jump')}>
           {avatarActionLabel('jump')}
         </button>
       </div>

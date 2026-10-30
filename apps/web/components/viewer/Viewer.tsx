@@ -11,9 +11,11 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 
 import { isActionEnabled } from '@/lib/action-enabled';
+import { readAvatarPreference } from '@/lib/avatar-preference';
 import { sceneLabel } from '@/lib/labels';
 import { readSoundPreference } from '@/lib/sound-preference';
 
+import { AvatarEditor } from './AvatarEditor';
 import { Fallback2D } from './Fallback2D';
 import { GlobalNav } from './GlobalNav';
 import { KeyboardHint } from './KeyboardHint';
@@ -108,6 +110,9 @@ export function Viewer({ manifest, initialMode = '3d', children }: ViewerProps) 
   useEffect(() => {
     const api = store.getState();
     if (readSoundPreference()) api.setSound(true);
+    // Before the first scene builds, so a saved look never flashes the default.
+    const savedAvatar = readAvatarPreference();
+    if (savedAvatar) api.setAvatarAppearance(savedAvatar);
     // A manual 2D start becomes `webgl_unsupported` here, which hides "Kembali ke 3D".
     if (detectWebGL()) api.start();
     else api.enterFallback('webgl_unsupported');
@@ -132,6 +137,7 @@ export function Viewer({ manifest, initialMode = '3d', children }: ViewerProps) 
   );
 
   const is2D = status === 'FALLBACK_2D';
+  const editingAvatar = activeOverlay?.type === 'avatar_editor';
   const loading = status === 'BOOT' || status === 'SWITCHING_SCENE' || status === 'LOADING_SCENE';
   const showCanvas = status !== 'BOOT' && !is2D;
   const message = statusText(status, loading ? (pendingSceneId ?? currentSceneId) : currentSceneId);
@@ -181,26 +187,51 @@ export function Viewer({ manifest, initialMode = '3d', children }: ViewerProps) 
 
             <header
               data-testid="viewer-header"
-              className={`pointer-events-none absolute inset-x-0 top-0 flex flex-col items-center gap-2 ${
+              className={`pointer-events-none absolute inset-x-0 top-0 flex flex-col items-center gap-2 transition-opacity duration-200 short:gap-0 motion-reduce:transition-none ${
                 children ? '' : 'pt-[env(safe-area-inset-top)]'
-              }`}
+              } ${editingAvatar ? 'opacity-0' : ''}`}
             >
               {children}
-              <div className="mt-1 rounded-2xl bg-[#2b2118]/70 px-5 py-2 text-center text-[#fbf7ee] backdrop-blur">
-                <p className="text-xs tracking-widest uppercase">Undangan Pernikahan</p>
-                <h1 className="font-serif text-2xl">
-                  {wedding.couple.groom} &amp; {wedding.couple.bride}
-                </h1>
+              {/* One row on short (landscape) viewports, so the canvas keeps ≥ 60% (E2E-12). */}
+              <div className="flex max-w-full flex-col items-center gap-2 short:flex-row">
+                <div className="mt-1 max-w-[calc(100vw_-_1.5rem)] rounded-2xl bg-[#2b2118]/70 px-5 py-2 text-center text-[#fbf7ee] backdrop-blur short:mt-0 short:py-1">
+                  <p className="text-xs tracking-widest uppercase short:hidden">
+                    Undangan Pernikahan
+                  </p>
+                  <h1 className="font-serif text-2xl text-balance short:text-lg">
+                    {wedding.couple.groom} &amp; {wedding.couple.bride}
+                  </h1>
+                </div>
+                {/* On phones the button shares this row: long names can take the whole width. */}
+                <div className="-mt-1 flex items-center gap-2 short:mt-0">
+                  {/* Where am I (§3.3 breadcrumb); the quick map lists every scene. */}
+                  {currentSceneId ? (
+                    <p
+                      data-testid="scene-chip"
+                      className="rounded-full bg-[#fbf7ee]/90 px-3 py-0.5 text-xs font-medium text-[#4e2c18] shadow-sm"
+                    >
+                      {sceneLabel(currentSceneId)}
+                    </p>
+                  ) : null}
+                  <Button
+                    variant="secondary"
+                    aria-label="Ubah avatar"
+                    // Not `disabled`: focus returns here when the editor closes.
+                    aria-disabled={status === 'READY' ? undefined : 'true'}
+                    className={`pointer-events-auto px-3 roomy:absolute roomy:right-3 ${
+                      children
+                        ? 'roomy:top-9'
+                        : 'roomy:top-[calc(env(safe-area-inset-top)_+_0.5rem)]'
+                    }`}
+                    onClick={() => store.getState().openOverlay({ type: 'avatar_editor' })}
+                  >
+                    <span aria-hidden="true" className="sm:hidden">
+                      Avatar
+                    </span>
+                    <span className="max-sm:hidden">Ubah avatar</span>
+                  </Button>
+                </div>
               </div>
-              {/* Where am I (§3.3 breadcrumb); the quick map lists every scene. */}
-              {currentSceneId ? (
-                <p
-                  data-testid="scene-chip"
-                  className="-mt-1 rounded-full bg-[#fbf7ee]/90 px-3 py-0.5 text-xs font-medium text-[#4e2c18] shadow-sm"
-                >
-                  {sceneLabel(currentSceneId)}
-                </p>
-              ) : null}
             </header>
 
             {status === 'ERROR' ? (
@@ -225,7 +256,9 @@ export function Viewer({ manifest, initialMode = '3d', children }: ViewerProps) 
 
             <div
               data-testid="viewer-controls"
-              className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col gap-2 px-3 pt-2 pb-[calc(env(safe-area-inset-bottom)_+_0.5rem)]"
+              className={`pointer-events-none absolute inset-x-0 bottom-0 flex flex-col gap-2 px-3 pt-2 pb-[calc(env(safe-area-inset-bottom)_+_0.5rem)] transition-opacity duration-200 motion-reduce:transition-none ${
+                editingAvatar ? 'opacity-0' : ''
+              }`}
             >
               <TouchControls store={store} hidden={interactionsOpen} />
               <KeyboardHint store={store} />
@@ -258,7 +291,9 @@ export function Viewer({ manifest, initialMode = '3d', children }: ViewerProps) 
           onClose={closeOverlay}
           fallbackFocus={worldRef}
         />
-      ) : activeOverlay?.type === 'avatar_editor' ? null : activeOverlay ? (
+      ) : activeOverlay?.type === 'avatar_editor' ? (
+        <AvatarEditor store={store} onClose={closeOverlay} fallbackFocus={worldRef} />
+      ) : activeOverlay ? (
         <OverlayHost
           key={activeOverlay.type}
           overlay={activeOverlay}

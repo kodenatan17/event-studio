@@ -1,4 +1,4 @@
-import type { ActiveOverlay, InputAction } from '@undangan/world-engine';
+import type { ActiveOverlay, InputAction, InteractiveTag } from '@undangan/world-engine';
 
 /** Indonesian labels for scenes and HTML controls; the manifest carries no labels (D-010). */
 const SCENE_LABELS: Readonly<Record<string, string>> = {
@@ -74,6 +74,19 @@ export function sceneLabel(sceneId: string): string {
 /** Label for a hotspot or portal id; unknown ids fall back to the id itself. */
 export function controlLabel(id: string): string {
   return lookup(CONTROL_LABELS, id);
+}
+
+/** Name of the prompt for what is in reach: portals keep their own verb, hotspots read "Buka …". */
+export function interactLabel(tag: InteractiveTag): string {
+  const label = controlLabel(tag.id);
+  return tag.kind === 'portal' ? label : `${avatarActionLabel('interact')} ${label}`;
+}
+
+/** Text for the round touch button; always the start of `interactLabel` (WCAG 2.5.3). */
+export function interactShortLabel(tag: InteractiveTag | null): string {
+  if (tag?.kind !== 'portal') return avatarActionLabel('interact');
+  const label = controlLabel(tag.id);
+  return label.split(' ke ')[0] ?? label;
 }
 
 export function overlayLabel(overlay: ActiveOverlay): string {

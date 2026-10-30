@@ -8,9 +8,9 @@ import { useEffect, useRef } from 'react';
 import { controlLabel, sceneLabel } from '@/lib/labels';
 
 const BUTTON =
-  'min-h-11 min-w-11 whitespace-nowrap rounded-full px-3 py-2 text-sm sm:px-4 font-medium shadow-sm backdrop-blur ' +
+  'min-h-11 min-w-11 whitespace-nowrap rounded-full px-3 py-2 text-sm sm:px-4 font-medium shadow-sm roomy:backdrop-blur ' +
   'transition active:scale-[.97] motion-reduce:transition-none motion-reduce:active:scale-100 ' +
-  'max-sm:w-full max-sm:truncate ' +
+  'compact:w-full compact:truncate ' +
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-900';
 
 interface SceneActionsProps {
@@ -20,17 +20,18 @@ interface SceneActionsProps {
   isActionEnabled?: (action: WorldAction) => boolean;
   /** Element id, referenced by the "Interaksi" toggle's `aria-controls`. */
   id: string;
-  /** Mobile disclosure state; at ≥ sm the row is always shown. */
+  /** Phone disclosure state (`compact`); on `roomy` viewports the row is always shown. */
   open: boolean;
   onClose: () => void;
 }
 
 /**
  * Labelled HTML control for every hotspot and portal of the current scene, dispatching the same
- * `WorldAction` as the 3D object (architecture.md §3.4). One DOM instance: a compact row at ≥ sm,
- * and below sm a panel above the bottom bar behind the "Interaksi" toggle (GlobalNav). The panel
- * closes on the toggle, Escape or a tap outside, and with the scene; it stays open while an
- * overlay it opened is up, so focus returns to the control (§3.4).
+ * `WorldAction` as the 3D object (architecture.md §3.4). One DOM instance: a row on `roomy`
+ * viewports, and on phones in either orientation (`compact`) a panel above the bottom bar behind
+ * the "Interaksi" toggle (GlobalNav). The panel closes on the toggle, Escape or a tap outside, and
+ * with the scene; it stays open while an overlay it opened is up, so focus returns to the control
+ * (§3.4). No backdrop blur on phones: blurring over the live canvas costs frames.
  */
 export function SceneActions({
   store,
@@ -77,17 +78,17 @@ export function SceneActions({
       ref={list}
       id={id}
       aria-label={`Aksi di ${sceneLabel(scene.id)}`}
-      className={`pointer-events-auto flex max-w-full flex-nowrap gap-2 px-1 py-1 sm:flex-wrap sm:justify-center sm:overflow-x-auto sm:overscroll-x-contain ${
+      className={`pointer-events-auto flex max-w-full flex-nowrap gap-2 px-1 py-1 roomy:flex-wrap roomy:justify-center roomy:overflow-x-auto roomy:overscroll-x-contain ${
         open
-          ? 'max-sm:absolute max-sm:inset-x-3 max-sm:bottom-full max-sm:mb-2 max-sm:grid max-sm:max-h-[40dvh] max-sm:grid-cols-2 max-sm:overflow-y-auto max-sm:overscroll-contain max-sm:rounded-2xl max-sm:bg-[#2b2118]/85 max-sm:p-2 max-sm:shadow-xl'
-          : 'max-sm:hidden'
+          ? 'compact:absolute compact:inset-x-3 compact:bottom-full compact:mb-2 compact:grid compact:max-h-[40dvh] compact:grid-cols-2 compact:overflow-y-auto compact:overscroll-contain compact:rounded-2xl compact:bg-[#2b2118]/85 compact:p-2 compact:shadow-xl'
+          : 'compact:hidden'
       }`}
     >
       {scene.hotspots.map((hotspot) => {
         const action = resolveHotspotAction(hotspot);
         if (!action || (isActionEnabled && !isActionEnabled(action))) return null;
         return (
-          <li key={hotspot.id} className="shrink-0 max-sm:min-w-0">
+          <li key={hotspot.id} className="shrink-0 compact:min-w-0">
             <button
               type="button"
               data-hotspot-id={hotspot.id}
@@ -100,7 +101,7 @@ export function SceneActions({
         );
       })}
       {scene.portals.map((portal) => (
-        <li key={portal.id} className="shrink-0 max-sm:min-w-0">
+        <li key={portal.id} className="shrink-0 compact:min-w-0">
           <button
             type="button"
             data-hotspot-id={portal.id}
