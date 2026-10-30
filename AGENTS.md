@@ -1,4 +1,4 @@
-# Event Studio — Codex
+# Event Studio — Agent Guide
 
 Mobile-first interactive 3D wedding invitations and a reusable multi-tenant studio CMS. Guests explore `entrance`, `living-room`, `wedding-garden`, and `reception-hall`; couples edit drafts and publish immutable wedding worlds.
 
@@ -16,7 +16,7 @@ Read the relevant sections before changing behavior; load `spec-first` for FR/T/
 
 Resolve disagreements using each source's authority and record genuine gaps in `docs/decisions.md`. Preserve acceptance criteria and stable section IDs. User instructions take precedence over local conventions.
 
-This repository already has application code and a pnpm workspace. Do not repeat T-001/T-002 based on the historical greenfield note in `CLAUDE.md`. That file and `.claude/agents`/`.claude/commands` configure Claude; use this file and `.codex/` for Codex routing.
+This repository already has application code and a pnpm workspace. Do not repeat T-001/T-002 based on the historical greenfield note in `CLAUDE.md`. That file and `.claude/agents`/`.claude/commands` configure Claude; use this file with `.codex/` for Codex routing and `.opencode/` for OpenCode routing.
 
 ## Architecture and current constraints
 
@@ -39,7 +39,7 @@ This repository already has application code and a pnpm workspace. Do not repeat
 
 ## Agentic workflow
 
-Use direct execution for small changes. For substantial implementation work with independent subtasks, delegate to the appropriate specialists in `.codex/agents/`; follow `.codex/workflows.md`. The coordinator owns scope, integration, validation, and the final answer. Do not delegate merely to fill roles.
+Use direct execution for small changes. For substantial implementation work with independent subtasks, delegate to the appropriate specialists in `.codex/agents/` (Codex) or `.opencode/agents/` (OpenCode); follow `.codex/workflows.md` or `.opencode/README.md`. The coordinator owns scope, integration, validation, and the final answer. Do not delegate merely to fill roles.
 
 - `scout` (Pingot): read-only discovery, impact, diagnosis, research.
 - `architect` (Bima): read-only design, plan, and specification consistency.
@@ -57,7 +57,7 @@ Check `git status` first and preserve existing user WIP. Do not revert, stage, c
 
 ## Skills
 
-Project skills live in `.agents/skills/`. Fourteen domain/Three.js skills are relative symlinks to `.claude/skills/`, keeping one maintained source. Load only the relevant skills and references.
+Project skills live in `.agents/skills/`. Fourteen domain/Three.js skills are relative symlinks to `.claude/skills/`, keeping one maintained source. OpenCode discovers both `.claude/skills` and `.agents/skills` automatically; do not duplicate them under `.opencode/skills`. Load only the relevant skills and references.
 
 - Behavior/spec mapping: `spec-first`.
 - App, API, data, workspace: `wedding-web-architecture`.

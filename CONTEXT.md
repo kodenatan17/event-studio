@@ -1,7 +1,8 @@
 # CONTEXT.md — handoff snapshot for Codex
 
-> **Snapshot:** 2026-10-30, 22:58 WIB. After the Claude coder stopped, Codex did Chunk 0: typecheck is green again (lint clean · typecheck 5/5 · unit 116/0).
-> **Next step:** follow `docs/handoff/phase2-checklist.md`. Do one unticked chunk per session, tick it, and update this line. Branch `main`, last commit `c5c5060`. Much of the work below is **uncommitted**, so check `git status` and `git diff` before trusting this file.
+> **Snapshot:** 2026-10-31. **Phase 3 is DONE** (couple in the garden, design §5). Own code: unit 113/113 in world-engine, E2E 67 passed / 15 skipped, with `e2e/audio.spec.ts` failing 8 (not this workstream).
+> **Blocker from other tools:** `pnpm typecheck`, `pnpm lint`, `pnpm build` and 2 unit tests currently fail on uncommitted OpenCode/Codex files only (`scenes/decor/GardenDetails.tsx` vs `gardenDetails.ts`, `gardenDetails.test.ts`, `apps/web/lib/soundtrack.ts`). The E2E run above used a scratch copy with two local fixes to those files; the repo was not changed. Re-run all gates here once that work lands.
+> **Next step:** QA pass, then the documenter (D-032..D-038, progress, asset register). Branch `main`, last commit `537502a`. Phase 0, Phase 1 and the partial Phase 2 work are committed; **Chunks A–G and Phase 3 are uncommitted**, so where this file says "uncommitted" for older work it is out of date.
 > **Purpose:** continue the work started in Claude Code. `AGENTS.md` and `.codex/` say *how* to work. This file says *where the work stands*.
 
 ## Read order
@@ -42,43 +43,20 @@ The user asked for four things on 2026-10-30:
 |---|---|---|
 | 0 | Wire the 9 `threejs-*` skills into `CLAUDE.md`, `.claude/agents/*`, `.claude/commands/*`, `.claude/skills/world-engine` | Done, uncommitted |
 | 1 | Steps 1–14: input bus, keyboard/joystick, `moveWithCollisions`, jump/wave/interact, `nearby`, TouchControls, KeyboardHint, WorldStatus hooks, Interaksi disclosure, polish, Bloom + `resolveRenderTier` | **Done, uncommitted.** Reviewed PASS_WITH_NOTES. Gates: unit 106/0, E2E 44/0/8 skipped, repeat-each=2 70/0/14 |
-| 2 | Steps 15–23: wardrobe catalog, appearance + persistence (`undangan.avatar.v1`), rig, procedural character builder, materials/textures, clips/animator, AvatarEditor sheet, preview camera | **In progress** (see below) |
-| 3 | Steps 24–29: `COUPLE_GROOM` / `COUPLE_BRIDE` under the akad canopy, wedding outfits, `idle_groom` / `idle_bride` | Not started |
+| 2 | Steps 15–23: wardrobe catalog, appearance + persistence (`undangan.avatar.v1`), rig, procedural character builder, materials/textures, clips/animator, AvatarEditor sheet, preview camera | **Done, uncommitted.** Reviewed PASS_WITH_NOTES, all notes applied. Gates: unit 159/0, E2E 63/0/15 skipped, repeat-each=2 68/0/28 skipped |
+| 3 | Steps 24–29: `COUPLE_GROOM` / `COUPLE_BRIDE` under the akad canopy, wedding outfits, `idle_groom` / `idle_bride` | **Done, uncommitted.** See "Phase 3 — result" |
 | After | QA pass, then the documenter writes D-032..D-038, updates progress and the asset register | Not started |
 
-### Phase 2 — where it stopped
-The Claude coder was **stopped** at 22:47 WIB so Codex can take over. No other agent is editing the repo, and no test or probe servers are left running.
+### Phase 2 — result
+Everything is in `packages/world-engine/src/avatar/` (`parts/`, `textures`, `materials`, `caches`, `buildCharacter`, `clips`, `animator`, `useCharacter`), `packages/ui/src/{Sheet.tsx,useModalDialog.ts}`, and `apps/web/components/viewer/AvatarEditor.tsx`. Deviations from the design are listed under each chunk in the checklist; read them before Phase 3. `buildCharacter` takes generic `CharacterSpec`s, so the couple figures can reuse it, and `kit.dispose` shares materials through user counts.
 
-**Already written:**
-- `packages/world-engine/src/avatar/`:
-  - `wardrobe.ts` (catalog per design §3)
-  - `appearance.ts` + `appearance.test.ts` (types, defaults, normalize/parse, 8 tests)
-  - `rig.ts` (17-bone skeleton)
-  - `shapes.ts` (lathe/profile helpers — may be incomplete; review it)
-  - `placeholderAnimator.ts` (the Phase 1 seam)
-- `scene-manager/store.ts` + test:
-  - `avatarAppearance` and `setAvatarAppearance`;
-  - `ActiveOverlay` gained `{ type: 'avatar_editor' }`, opening only from READY;
-  - `avatarPresetId` removed.
+### Phase 3 — result
+`avatar/parts/wedding.ts`, `FIGURE_OUTFITS` in `wardrobe.ts`, `figureSpec`, `figureClip`, `createFigureAnimator`, `scenes/decor/Figure.tsx`, `figureNodes` in the store, `data-couple` on WorldStatus. Tests: `avatar/figures.test.ts`, `e2e/couple.spec.ts`. Groom 11.2k tris / 10 draws, bride about 14.4k / 12: the bride has little headroom left in the 15k budget.
+- Deviations: the 0.5 m train is on the long velvet kebaya, not the jarik, as in the reference (`jarik-ekor` reuses the jarik geometry). `slot: 'ornament'` was added for outfit-only pieces. `kalung` (necklace) added from the reference. Lace kebayas got a short sleeve of the body cloth. Embroidery was made denser, which also changes the unused guest designs.
+- `[FR-04] entrance↔garden ×5` uses `test.slow()` (timeout only). This extends D-031, still awaiting sign-off.
+- `e2e/couple.spec.ts --repeat-each=2` failed 8/8 once, then passed 8/8 twice on the same code. The first run's log was lost, load average was about 20, and the cause is not proven. Treat it as a possible load-related flake.
 
-**Tree state at handoff:**
-- `pnpm test`: **116 passed / 0 failed** (world-engine 65, web 23, contracts 16, wedding-features 7, ui 5).
-- `pnpm typecheck`: green since 22:56 WIB (fixed by Codex, Chunk 0). At 22:47 it failed with these 2 errors:
-  - `apps/web/lib/labels.ts:32` — `overlayLabels` lacks the `avatar_editor` key.
-  - `apps/web/components/viewer/Viewer.tsx:264` — `activeOverlay` (now including `avatar_editor`) is passed to something typed `OverlayAction`. Narrow it before `OverlayHost` (design step 22).
-- Lint, build and E2E were not re-run after the partial Phase 2 edits. The last green run was at the end of Phase 1.
-
-**Remaining:**
-  - `textures.ts`, `materials.ts`, `parts/{index,body,head,hair,clothing,accessories}.ts`, `buildCharacter.ts`, `clips.ts`, `animator.ts`, `useCharacter.ts`, each with its tests;
-  - swap `PlaceholderAnimator` for the real character in `scenes/Avatar.tsx`;
-  - FollowCamera preview mode;
-  - `clearCharacterCaches` in WorldCanvas;
-  - extract `useModalDialog` and add `packages/ui/src/Sheet.tsx`;
-  - apps/web `lib/avatar-preference.ts`, `lib/avatar-labels.ts`, `components/viewer/AvatarEditor.tsx`, the "Ubah avatar" button, `data-avatar` on WorldStatus;
-  - `e2e/avatar.spec.ts` (including E2E-11).
-- Budget: at most 15k triangles and 12 draw calls per character, enforced by a test. Vitest runs in Node with no canvas, so stub textures through the injectable `TextureProvider`.
-
-**Phase 1 review notes to fix as part of Phase 2** (none are applied yet as of 22:47 WIB):
+**Phase 1 review notes** (all six applied in Chunk A, 2026-10-31, uncommitted):
 1. Keep the desktop "E Buka …" button in `KeyboardHint.tsx` mounted while an overlay is open, so focus returns to it (§3.4).
 2. Landscape phones (coarse pointer, width > 640, height ~390): use the Interaksi disclosure on short viewports too, and add a landscape case to E2E-12.
 3. Add cleanup to the `setPostFx` effect in `WorldCanvas.tsx` (`setPostFx('off')`).
@@ -108,7 +86,7 @@ The Claude coder was **stopped** at 22:47 WIB so Codex can take over. No other a
 - E2E uses Playwright projects `desktop` and `mobile` (Pixel 7) on headless Chromium with SwiftShader, served by `next start` on :3100 with `DEV_FIXTURE_MANIFESTS=1`.
   - The GLB living room renders at about 150 ms per frame there, so tests that enter it use `test.slow()` (D-031).
   - `--repeat-each=3` with 4 workers can still time out on living-room tests (a known limitation). A worker cap is proposed but not decided.
-- Bloom is off on SwiftShader unless quality is forced to `'high'`, so CI never exercises `Bloom.tsx`. A real-GPU check is still needed.
+- Bloom is off on SwiftShader unless quality is forced to `'high'`, so CI never exercises `Bloom.tsx` or the `setPostFx` cleanup. A real-GPU check is still needed.
 - **Servers:** the user runs `next dev` for `apps/web` on :3001 and an unrelated app on :3000. Do not stop them. Next 16 allows one `next dev` per app dir, so use `next start` on a free port (e.g. 3300) for probes, and kill whatever you start.
 - Client bundles must not contain zod; import contracts as types only. Don't add dependencies; three already ships GLTFLoader, EffectComposer, mergeGeometries and AnimationMixer.
 - Tests carry IDs in their names (`[FR-04] …`, `E2E-11 …`). Never weaken an assertion.

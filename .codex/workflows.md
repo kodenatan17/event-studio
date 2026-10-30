@@ -1,6 +1,13 @@
-# Codex agentic workflows
+# Agentic workflows
 
-Use these routes with the native roles in `.codex/agents/`. The main agent coordinates and integrates. A named role can be passed to the runtime's delegation tool when custom roles are available. If the runtime offers only general subagents, include the relevant role instructions in the task. If no delegation is available, execute the applicable steps directly and report that fact; never invent agent results.
+Use these routes with the native roles in `.codex/agents/` (Codex) or
+`.opencode/agents/` (OpenCode). OpenCode slash commands in `.opencode/commands/`
+wrap the same routes; see `.opencode/README.md` for the OpenCode-specific setup.
+The main agent coordinates and integrates. A named role can be passed to the
+runtime's delegation tool when custom roles are available. If the runtime offers
+only general subagents, include the relevant role instructions in the task. If
+no delegation is available, execute the applicable steps directly and report
+that fact; never invent agent results.
 
 ## Execution contract
 

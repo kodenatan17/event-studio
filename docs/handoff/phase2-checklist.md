@@ -31,7 +31,13 @@ Design sections are cited as §N of `docs/design/controls-avatar-couple.md`.
   - `shapes.ts` finished.
   - Results: lint clean · typecheck 5/5 · unit 116/0.
 
-- [ ] **Chunk A — Phase 1 review fixes (+E2E).** Skills: `threejs-interaction`.
+- [x] **Chunk A — Phase 1 review fixes (+E2E).** Skills: `threejs-interaction`.
+  - Results: lint clean · typecheck 5/5 · unit 118/0 · build OK · E2E 49 passed / 0 failed / 13 skipped. Uncommitted.
+  - The five new E2E tests were run against the old code first and failed there.
+  - `test.slow()` added (timeout only, same `FRAME_BOUND` reason as the rest of `controls.spec.ts`): `[§3.4] closing a dialog opened from the "Buka" prompt returns focus to it`, `[§3.4] portal prompt keeps its own verb`, `[§3.4] touch portal prompt keeps its own verb`, `[FR-04] Meta releases held movement keys`.
+  - Item 3 (`setPostFx` cleanup) has no automated test: bloom is off on SwiftShader, so `data-postfx` is always `off` in E2E.
+  - Beyond the list: `Viewer.tsx` header is condensed on short viewports. Playwright's Pixel 7 landscape is 863×360, and the canvas now keeps 62.2% there (65.1% at 844×390).
+  - `compact` / `roomy` / `short` variants live in `apps/web/app/globals.css`. Phones in either orientation use `compact`, including for `backdrop-blur` removal (wider than the `max-sm:` asked for).
   1. `apps/web/components/viewer/KeyboardHint.tsx`: keep the desktop "E Buka …" button mounted while an overlay is open — hold the last `nearby`, or use `aria-disabled` — so Dialog focus returns to it (§3.4).
   2. Landscape phones (coarse pointer, width > 640, height ~390):
      - use the Interaksi disclosure on short viewports too (a max-height variant in `SceneActions.tsx` and `GlobalNav.tsx`);
@@ -41,7 +47,9 @@ Design sections are cited as §N of `docs/design/controls-avatar-couple.md`.
   5. `SceneActions.tsx`: no `backdrop-blur` on small screens (`max-sm:`).
   6. Labels: portals keep their own verb ("Masuk ke Ruang Tamu"), and only content hotspots use "Buka …". This applies to `lib/labels.ts`, KeyboardHint and TouchControls. Never "Buka Masuk ke …".
 
-- [ ] **Chunk B — textures + materials (§2).** Skills: `threejs-textures`, `threejs-materials`.
+- [x] **Chunk B — textures + materials (§2).** Skills: `threejs-textures`, `threejs-materials`.
+  - Results: lint clean · typecheck 5/5 · unit 131/0 (world-engine 79). Uncommitted.
+  - Added beyond the list: `retain`/`release` user counts, because the caches are shared by every character (the last release frees the GPU copy; canvases stay). `avatar/caches.ts` holds `clearCharacterCaches()`. `unregisterGlowMaterial` in `glow.ts`, so freed melati materials leave the registry. `sekar` batik, which the wardrobe's navy shirts need.
   - `packages/world-engine/src/avatar/textures.ts`:
     - deterministic, tileable CanvasTexture generators (reuse `seeded()`): 512 px on high, 256 px on base;
     - batik `parang|kawung|truntum` in sogan palettes;
@@ -58,7 +66,9 @@ Design sections are cited as §N of `docs/design/controls-avatar-couple.md`.
     - dispose frees GPU memory but keeps the canvas;
     - the provider stub works in Node.
 
-- [ ] **Chunk C — body, head, hair (§2 geometry/skinning).** Skills: `threejs-fundamentals`, `threejs-animation`.
+- [x] **Chunk C — body, head, hair (§2 geometry/skinning).** Skills: `threejs-fundamentals`, `threejs-animation`.
+  - Results: lint clean · typecheck 5/5 · unit 142/0 (with Chunk D). Uncommitted. Rendered and compared with `avatar-customize.png` through a throwaway probe; about 7 heads as decided, so the head is deliberately smaller than the reference's.
+  - `parts/types.ts` added (no import cycle). `rx` of both heads widened (0.081 / 0.077). `chainWeights` lives in `shapes.ts`.
   - Build `avatar/parts/{index,body,head,hair}.ts` on `rig.ts` and `shapes.ts`.
   - Look: "Stylized Realistic", not chibi or boxes. About 7 heads tall.
     - Torso and limbs: lathe-based.
@@ -71,7 +81,9 @@ Design sections are cited as §N of `docs/design/controls-avatar-couple.md`.
   - Compare against `apps/assets/avatar-customize.png`.
   - Tests: every body and hair item builds; vertex weights sum to 1.
 
-- [ ] **Chunk D — clothing, accessories, buildCharacter (§2–§3).** Skills: `threejs-materials`, `threejs-textures`.
+- [x] **Chunk D — clothing, accessories, buildCharacter (§2–§3).** Skills: `threejs-materials`, `threejs-textures`.
+  - Results: lint clean · typecheck 5/5 · unit 142/0. Uncommitted. Budget test covers 300 seeded looks and the heaviest loadouts on both tiers; rendered samples are 8.8k–10.9k triangles and 8–11 draw calls.
+  - Deviations: `buildCharacter(spec, {tier, materials})` takes the shared material cache rather than `textures`. Shoes, soles, bags and glasses share one `leather` material with vertex colours (13 draw calls otherwise). `kebaya-brokat` no longer covers `arms` (lace sleeves show them). Kebaya bodices use vertex shade, not a second material. The lace map has no opaque band, because only lace parts sample it.
   - `avatar/parts/{clothing,accessories}.ts`, covering every wardrobe item for its bodies:
     - headwear: peci, blangkon solo/yogya, iket, hijab;
     - tops: beskap, batik panjang/pendek, kebaya kutubaru/brokat;
@@ -90,7 +102,9 @@ Design sections are cited as §N of `docs/design/controls-avatar-couple.md`.
     - `[FR-07] each character ≤ 15,000 triangles and ≤ 12 draw calls`
     - `[FR-07] kit.dispose releases merged geometries and bone texture`
 
-- [ ] **Chunk E — clips, animator, avatar swap (+E2E).** Skills: `threejs-animation`.
+- [x] **Chunk E — clips, animator, avatar swap (+E2E).** Skills: `threejs-animation`.
+  - Results: lint clean · typecheck 5/5 · unit 152/0 · build OK · E2E 49 passed / 0 failed / 13 skipped, with the real character in every scene. Uncommitted. No new `test.slow()`.
+  - Deviations: `useCharacter` builds in a layout effect, not `useMemo`: StrictMode would dispose a kit still in use, and the real dispose would then be skipped. The new kit goes up before the old one is released, so shared materials stay on the GPU. Wave and interact leave locomotion at 15% (equal weights would halve the raised arm); jump takes all of it. `placeholderAnimator.ts`, the capsule geometry and its materials are gone.
   - `avatar/clips.ts` — procedural QuaternionKeyframeTracks, cached per `body:skirted`:
     - `idle` 2.4 s;
     - `walk` 0.62 s (±26°, or ±16° when skirted; pelvis bob);
@@ -112,7 +126,9 @@ Design sections are cited as §N of `docs/design/controls-avatar-couple.md`.
     - `[FR-07] one AnimationMixer per character; dispose stops actions and uncaches root`
     - the existing `[FR-04] 10 transitions do not grow data-gl-geometries` must still pass.
 
-- [ ] **Chunk F — Sheet, preview camera, AvatarEditor, persistence (+E2E) (§4).** Skills: `threejs-interaction`, `threejs-fundamentals`.
+- [x] **Chunk F — Sheet, preview camera, AvatarEditor, persistence (+E2E) (§4).** Skills: `threejs-interaction`, `threejs-fundamentals`.
+  - Results: lint clean · typecheck 5/5 · unit 157/0 · build OK · E2E 60 passed / 0 failed / 14 skipped (including `e2e/avatar.spec.ts` from Chunk G). Uncommitted. No new `test.slow()`.
+  - Decisions: the "Ubah avatar" button uses `aria-disabled`, not `disabled`, so focus can return to it. All three discard paths (Escape, Batal, browser back) end in one unmount that restores the snapshot. `viewer-controls` fades with the header, because the joystick would otherwise sit in the rotate surface. The Tubuh tab holds body and skin; hair and headwear are under Kepala.
   - `packages/ui/src/Sheet.tsx`:
     - extract `useModalDialog` from `Dialog.tsx` (D-026 stale-close guard, focus restore);
     - a full-viewport transparent `<dialog>` with a transparent backdrop;
@@ -139,7 +155,15 @@ Design sections are cited as §N of `docs/design/controls-avatar-couple.md`.
     - `[§8.2] avatar_editor opens only from READY`
     - `[§3.4] avatar preference stores only catalog ids`
 
-- [ ] **Chunk G — avatar E2E, full verification, screenshots, review (+E2E).**
+- [x] **Chunk G — avatar E2E, full verification, screenshots, review (+E2E).**
+  - Results, final tree: lint clean · typecheck 5/5 · unit 159/0 · build OK · E2E 63 passed / 0 failed / 15 skipped. Uncommitted.
+  - `--repeat-each=2` on the avatar, controls, mobile and navigation specs: 68 passed / 0 failed / 28 skipped. It ran before the last change (hijab drape geometry only); the full E2E run above is after it.
+  - Flake found and fixed: `[FR-07] mobile sheet ≤ 60% height, controls ≥ 44 px` hit `locator.scrollIntoViewIfNeeded: Test timeout of 30000ms exceeded`. Sizes are now read from layout in one pass, with the same assertions and no `test.slow()`.
+  - Bundle: no zod or fixture strings in `apps/web/.next/static`. Canvas chunk 1,030,672 → 1,076,404 bytes; gzip 274,529 → 291,016 (+16.5 KB; the design expected +60–90 KB).
+  - Samples at high tier: pria default 9,280 tris / 9 draws; wanita default 9,808 / 9; wanita hijab + brokat 9,516 / 10; pria blangkon + batik + celana 9,312 / 9.
+  - Screenshots: `/tmp/event-studio-p2/p2-*.png` (6). Probes lived in the scratchpad, not the repo.
+  - Review: PASS_WITH_NOTES, no required fixes; one fix round applied all seven notes. Added `data-avatar-built` (reported by the built character, which `data-avatar` is not), a look-swap geometry test, a StrictMode slot test, and a 360 px long-name test.
+  - Open: no test proves the drag reaches `input.preview.yaw` (only React state is observable). The hijab drape reads bulky, and the characters stay ART_PENDING.
   - `e2e/avatar.spec.ts` (entrance only):
     - `E2E-11 avatar appearance persists after reload; localStorage holds only undangan.sound/undangan.avatar.v1`
     - `[FR-07] Escape discards changes and restores focus`
