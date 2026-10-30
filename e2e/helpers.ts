@@ -50,6 +50,24 @@ export async function settledAvatar(status: Locator): Promise<[number, number]> 
   return settled;
 }
 
+/** `gl.info.memory.geometries` once two samples (renderer reports every 0.5 s) agree. */
+export async function settledGeometries(status: Locator): Promise<number> {
+  let previous = -1;
+  let settled = -1;
+  await expect
+    .poll(
+      async () => {
+        const value = Number((await status.getAttribute('data-gl-geometries')) || '-1');
+        settled = value > 0 && value === previous ? value : -1;
+        previous = value;
+        return settled;
+      },
+      { timeout: 15_000, intervals: [600] },
+    )
+    .toBeGreaterThan(0);
+  return settled;
+}
+
 /** Opens the global "Peta" dialog and picks a scene, like a guest would. */
 export async function goViaMap(page: Page, label: string) {
   await page.getByRole('button', { name: 'Peta', exact: true }).click();

@@ -83,7 +83,7 @@ test('E2E-03 gallery: open photo 1, ArrowRight shows 2/6, Escape closes; reopen,
   await expect(dialog).toHaveCount(0);
   await expectScene(status, 'living-room');
   expect(page.url()).toBe(url);
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Raka & Sekar');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Natan & Nurul');
 });
 
 test('[FR-02] living room shows 6 photo controls', async ({ page }) => {

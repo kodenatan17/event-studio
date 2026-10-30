@@ -26,7 +26,7 @@ test('E2E-10 WebGL disabled → 2D fallback with names, Akad Nikah, a chapter ti
     'FALLBACK_2D',
   );
   const fallback = page.getByTestId('fallback-2d');
-  await expect(fallback.getByRole('heading', { level: 1 })).toHaveText('Raka & Sekar');
+  await expect(fallback.getByRole('heading', { level: 1 })).toHaveText('Natan & Nurul');
   await expect(fallback.getByRole('heading', { name: 'Akad Nikah' })).toBeVisible();
   await expect(fallback.getByRole('heading', { name: 'Pertama Bertemu' })).toBeVisible();
   await expect(fallback).toContainText('09.00–11.00 WIB');
@@ -57,7 +57,7 @@ test('[T-108] ?mode=2d shows 2D view and Kembali ke 3D', async ({ page }) => {
   const status = page.getByTestId('world-status');
   await expect(status).toHaveAttribute('data-world-status', 'FALLBACK_2D');
   const fallback = page.getByTestId('fallback-2d');
-  await expect(fallback.getByRole('heading', { level: 1 })).toHaveText('Raka & Sekar');
+  await expect(fallback.getByRole('heading', { level: 1 })).toHaveText('Natan & Nurul');
   await expect(page.locator('canvas')).toHaveCount(0);
 
   await fallback.getByRole('button', { name: 'Kembali ke 3D' }).click();

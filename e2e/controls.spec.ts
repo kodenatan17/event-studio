@@ -107,6 +107,71 @@ test.describe('desktop keyboard controls', () => {
     await expectScene(status, 'wedding-garden');
   });
 
+  test('[§3.4] closing a dialog opened from the "Buka" prompt returns focus to it', async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', DESKTOP_ONLY);
+    test.slow(true, FRAME_BOUND);
+    await page.goto('/w/demo-wedding');
+    const status = page.getByTestId('world-status');
+    await expectScene(status, 'entrance');
+    await goViaMap(page, 'Taman Pernikahan');
+    await expectScene(status, 'wedding-garden');
+
+    await page.keyboard.down('KeyW');
+    await expect(status).toHaveAttribute('data-nearby', 'ceremony-info', { timeout: 40_000 });
+    await page.keyboard.up('KeyW');
+    const prompt = page.getByRole('button', { name: 'Buka Info akad nikah' });
+    await prompt.click();
+    const events = page.getByRole('dialog', { name: 'Info Acara' });
+    await expect(events).toBeVisible();
+
+    await page.keyboard.press('Escape');
+    await expect(events).toHaveCount(0);
+    await expect(prompt).toBeFocused();
+    await expect(status).toHaveAttribute('data-nearby', 'ceremony-info');
+  });
+
+  test('[§3.4] portal prompt keeps its own verb', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', DESKTOP_ONLY);
+    test.slow(true, FRAME_BOUND);
+    await page.goto('/w/demo-wedding');
+    const status = page.getByTestId('world-status');
+    await expectScene(status, 'entrance');
+
+    await page.keyboard.down('KeyW');
+    await expect(status).toHaveAttribute('data-nearby', 'front-door', { timeout: 40_000 });
+    await page.keyboard.up('KeyW');
+    // The HTML control has the same name, so the prompt is told apart by its key cap.
+    const prompt = page.getByRole('button', { name: 'Masuk ke Ruang Tamu' }).filter({
+      has: page.locator('kbd'),
+    });
+    await expect(prompt).toBeVisible();
+    await expect(page.getByRole('button', { name: /^(E )?Buka Masuk/ })).toHaveCount(0);
+  });
+
+  test('[FR-04] Meta releases held movement keys', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', DESKTOP_ONLY);
+    test.slow(true, FRAME_BOUND);
+    await page.goto('/w/demo-wedding');
+    const status = page.getByTestId('world-status');
+    await expectScene(status, 'entrance');
+    const start = await settledAvatar(status);
+
+    await page.keyboard.down('KeyW');
+    await expect
+      .poll(async () => (await avatarPosition(status))[1], { timeout: 30_000, intervals: [100] })
+      .toBeLessThan(start[1] - 0.3);
+    const atMeta = await avatarPosition(status);
+    // macOS sends no key-up for W while Meta is down: W stays down here and the avatar must stop.
+    await page.keyboard.down('Meta');
+    await page.keyboard.up('Meta');
+    const stopped = await settledAvatar(status);
+    // Stopped by Meta, within probe lag: walking on would end ~8 m further, at the floor edge.
+    expect(atMeta[1] - stopped[1]).toBeLessThan(1.5);
+    await page.keyboard.up('KeyW');
+  });
+
   test('[§8.2] movement keys ignored while Peta is open', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop', DESKTOP_ONLY);
     test.slow(true, FRAME_BOUND);
@@ -130,6 +195,19 @@ test.describe('desktop keyboard controls', () => {
   });
 });
 
+/** Presses the joystick and pushes it fully up; the caller releases with `page.mouse.up()`. */
+async function pushStickUp(page: Page) {
+  const stick = page.getByTestId('joystick');
+  await expect(stick).toBeVisible();
+  const box = await stick.boundingBox();
+  if (!box) throw new Error('joystick not rendered');
+  const cx = box.x + box.width / 2;
+  const cy = box.y + box.height / 2;
+  await page.mouse.move(cx, cy);
+  await page.mouse.down();
+  await page.mouse.move(cx, cy - 40, { steps: 4 });
+}
+
 test.describe('mobile touch controls', () => {
   test('[FR-04] mobile joystick drag moves the avatar; release stops', async ({
     page,
@@ -141,15 +219,7 @@ test.describe('mobile touch controls', () => {
     await expectScene(status, 'entrance');
     const start = await settledAvatar(status);
 
-    const stick = page.getByTestId('joystick');
-    await expect(stick).toBeVisible();
-    const box = await stick.boundingBox();
-    if (!box) throw new Error('joystick not rendered');
-    const cx = box.x + box.width / 2;
-    const cy = box.y + box.height / 2;
-    await page.mouse.move(cx, cy);
-    await page.mouse.down();
-    await page.mouse.move(cx, cy - 40, { steps: 4 });
+    await pushStickUp(page);
     await expect
       .poll(async () => (await avatarPosition(status))[1], { timeout: 40_000 })
       .toBeLessThan(start[1] - 0.5);
@@ -158,6 +228,23 @@ test.describe('mobile touch controls', () => {
     const stopped = await settledAvatar(status);
     await page.waitForTimeout(600);
     expect(await avatarPosition(status)).toEqual(stopped);
+  });
+
+  test('[§3.4] touch portal prompt keeps its own verb', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile', MOBILE_ONLY);
+    test.slow(true, FRAME_BOUND);
+    await page.goto('/w/demo-wedding');
+    const status = page.getByTestId('world-status');
+    await expectScene(status, 'entrance');
+
+    await pushStickUp(page);
+    await expect(status).toHaveAttribute('data-nearby', 'front-door', { timeout: 40_000 });
+    await page.mouse.up();
+
+    const prompt = page
+      .getByTestId('touch-controls')
+      .getByRole('button', { name: 'Masuk ke Ruang Tamu', exact: true });
+    await expect(prompt).toHaveText('Masuk', { useInnerText: true });
   });
 
   test('[§12] mobile renders without post-processing', async ({ page }, testInfo) => {

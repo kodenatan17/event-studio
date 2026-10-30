@@ -15,7 +15,7 @@ test('[T-003] demo wedding shows dev banner and renders the 3D canvas', async ({
 
   expect(response?.status()).toBe(200);
   await expect(page.getByText('Data contoh (fixture pengembangan)')).toBeVisible();
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Raka & Sekar');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Natan & Nurul');
   await expect(page.locator('canvas')).toBeVisible({ timeout: 30_000 });
   await expect(page.getByTestId('world-status')).toHaveAttribute('data-world-status', 'READY', {
     timeout: 30_000,

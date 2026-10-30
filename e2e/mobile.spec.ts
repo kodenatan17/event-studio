@@ -1,4 +1,5 @@
-import { expect, test } from '@playwright/test';
+import { devices, expect, test } from '@playwright/test';
+import type { Page } from '@playwright/test';
 
 import { expectScene, sceneControl } from './helpers';
 
@@ -8,18 +9,8 @@ function overlaps(a: Box, b: Box): boolean {
   return a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
 }
 
-test('E2E-12 mobile: no horizontal scroll, nav buttons ≥44×44 inside viewport and not overlapping, tapping a hotspot control opens the overlay, canvas keeps ≥60% visible', async ({
-  page,
-}, testInfo) => {
-  test.skip(testInfo.project.name !== 'mobile', 'mobile viewport only');
-  test.slow(); // GLB living room is slow on SwiftShader (D-031); timeout only.
-
-  await page.goto('/w/demo-wedding');
-  const status = page.getByTestId('world-status');
-  await expectScene(status, 'entrance');
-  await (await sceneControl(page, 'front-door')).tap();
-  await expectScene(status, 'living-room');
-
+/** No horizontal scroll; nav and touch controls ≥44 px, in view, apart; canvas keeps ≥60%. */
+async function expectMobileLayout(page: Page) {
   const viewport = page.viewportSize();
   if (!viewport) throw new Error('viewport size missing');
   const inViewport = (box: Box) => {
@@ -53,13 +44,6 @@ test('E2E-12 mobile: no horizontal scroll, nav buttons ≥44×44 inside viewport
   boxes.forEach((box, i) => {
     boxes.slice(i + 1).forEach((other) => expect(overlaps(box, other)).toBe(false));
   });
-  // Short visible labels keep their full accessible names (WCAG 2.5.3).
-  await expect(page.getByRole('button', { name: 'Info Acara', exact: true })).toHaveText('Acara', {
-    useInnerText: true,
-  });
-  await expect(page.getByRole('link', { name: 'Mode 2D', exact: true })).toHaveText('2D', {
-    useInnerText: true,
-  });
 
   // The 3D view between the header and the bottom controls keeps ≥60% of the viewport.
   const header = await page.getByTestId('viewer-header').boundingBox();
@@ -88,17 +72,50 @@ test('E2E-12 mobile: no horizontal scroll, nav buttons ≥44×44 inside viewport
     touchBoxes.slice(i + 1).forEach((other) => expect(overlaps(box, other)).toBe(false));
   });
 
-  // The scene's controls open from "Interaksi" as one panel above the bar, within 40% height.
+  return { viewport, inViewport, controls, touch };
+}
+
+/** The scene's controls open from "Interaksi" as one panel above the bar, within 40% height. */
+async function expectInteractionsPanel(
+  page: Page,
+  layout: Awaited<ReturnType<typeof expectMobileLayout>>,
+  controlId: string,
+) {
   const toggle = page.getByRole('button', { name: 'Interaksi', exact: true });
   await expect(toggle).toHaveAttribute('aria-expanded', 'false');
-  const frame = await sceneControl(page, 'photo-frame-01');
+  const control = await sceneControl(page, controlId);
   await expect(toggle).toHaveAttribute('aria-expanded', 'true');
-  await expect(touch).toBeHidden();
+  await expect(layout.touch).toBeHidden();
   const panel = await page.locator(`#${await toggle.getAttribute('aria-controls')}`).boundingBox();
   if (!panel) throw new Error('interaction panel not rendered');
-  inViewport(panel);
-  expect(panel.height).toBeLessThanOrEqual(viewport.height * 0.4 + 1);
-  expect(panel.y + panel.height).toBeLessThanOrEqual(controls.y);
+  layout.inViewport(panel);
+  expect(panel.height).toBeLessThanOrEqual(layout.viewport.height * 0.4 + 1);
+  expect(panel.y + panel.height).toBeLessThanOrEqual(layout.controls.y);
+  return { toggle, control };
+}
+
+test('E2E-12 mobile: no horizontal scroll, nav buttons ≥44×44 inside viewport and not overlapping, tapping a hotspot control opens the overlay, canvas keeps ≥60% visible', async ({
+  page,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile', 'mobile viewport only');
+  test.slow(); // GLB living room is slow on SwiftShader (D-031); timeout only.
+
+  await page.goto('/w/demo-wedding');
+  const status = page.getByTestId('world-status');
+  await expectScene(status, 'entrance');
+  await (await sceneControl(page, 'front-door')).tap();
+  await expectScene(status, 'living-room');
+
+  const layout = await expectMobileLayout(page);
+  // Short visible labels keep their full accessible names (WCAG 2.5.3).
+  await expect(page.getByRole('button', { name: 'Info Acara', exact: true })).toHaveText('Acara', {
+    useInnerText: true,
+  });
+  await expect(page.getByRole('link', { name: 'Mode 2D', exact: true })).toHaveText('2D', {
+    useInnerText: true,
+  });
+
+  const { toggle, control: frame } = await expectInteractionsPanel(page, layout, 'photo-frame-01');
 
   await frame.tap();
   await expect(status).toHaveAttribute('data-world-status', 'OVERLAY_OPEN');
@@ -107,7 +124,7 @@ test('E2E-12 mobile: no horizontal scroll, nav buttons ≥44×44 inside viewport
   const dialogBox = await dialog.boundingBox();
   if (!dialogBox) throw new Error('dialog not rendered');
   expect(dialogBox.x).toBeGreaterThanOrEqual(0);
-  expect(dialogBox.x + dialogBox.width).toBeLessThanOrEqual(viewport.width);
+  expect(dialogBox.x + dialogBox.width).toBeLessThanOrEqual(layout.viewport.width);
   await dialog.getByRole('button', { name: 'Tutup' }).tap();
   await expect(dialog).toHaveCount(0);
   // The panel stayed open behind the dialog, so focus returns to the control.
@@ -117,5 +134,27 @@ test('E2E-12 mobile: no horizontal scroll, nav buttons ≥44×44 inside viewport
   await page.keyboard.press('Escape');
   await expect(toggle).toHaveAttribute('aria-expanded', 'false');
   await expect(toggle).toBeFocused();
-  await expect(touch).toBeVisible();
+  await expect(layout.touch).toBeVisible();
+});
+
+test.describe('landscape phone', () => {
+  const { viewport, screen } = devices['Pixel 7 landscape'] ?? {};
+  test.use({ viewport, screen });
+
+  test('E2E-12 landscape: nav and touch controls ≥44×44 without overlap, scene controls behind "Interaksi", canvas keeps ≥60% visible', async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile', 'mobile viewport only');
+
+    await page.goto('/w/demo-wedding');
+    const status = page.getByTestId('world-status');
+    await expectScene(status, 'entrance');
+
+    const layout = await expectMobileLayout(page);
+    const { toggle } = await expectInteractionsPanel(page, layout, 'front-door');
+
+    await page.keyboard.press('Escape');
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(layout.touch).toBeVisible();
+  });
 });

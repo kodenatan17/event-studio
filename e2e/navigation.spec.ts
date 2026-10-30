@@ -1,28 +1,10 @@
 import { expect, test } from '@playwright/test';
 import type { Locator } from '@playwright/test';
 
-import { expectScene, goViaMap, sceneControl } from './helpers';
+import { expectScene, goViaMap, sceneControl, settledGeometries } from './helpers';
 
 async function requestId(status: Locator): Promise<number> {
   return Number(await status.getAttribute('data-request-id'));
-}
-
-/** `gl.info.memory.geometries` once two samples (renderer reports every 0.5 s) agree. */
-async function settledGeometries(status: Locator): Promise<number> {
-  let previous = -1;
-  let settled = -1;
-  await expect
-    .poll(
-      async () => {
-        const value = Number((await status.getAttribute('data-gl-geometries')) || '-1');
-        settled = value > 0 && value === previous ? value : -1;
-        previous = value;
-        return settled;
-      },
-      { timeout: 15_000, intervals: [600] },
-    )
-    .toBeGreaterThan(0);
-  return settled;
 }
 
 test('[FR-04] HTML controls switch entrance → living room → garden → back; double click on a portal control raises data-request-id by exactly 1', async ({
