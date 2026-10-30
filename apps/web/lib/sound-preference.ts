@@ -1,13 +1,18 @@
-/** Local, non-sensitive mute preference (architecture.md §3.4); default off (§12). */
+/** Local, non-sensitive mute preference (architecture.md §3.4). */
 export const SOUND_STORAGE_KEY = 'undangan.sound';
 
-export function readSoundPreference(): boolean {
+/** `null` means the guest has not chosen yet; an explicit off must survive reloads. */
+export function readSoundPreferenceValue(): boolean | null {
   try {
-    return window.localStorage.getItem(SOUND_STORAGE_KEY) === 'on';
+    const value = window.localStorage.getItem(SOUND_STORAGE_KEY);
+    return value === 'on' ? true : value === 'off' ? false : null;
   } catch {
-    // Storage blocked (private mode, disabled cookies): stay muted.
-    return false;
+    return null;
   }
+}
+
+export function readSoundPreference(): boolean {
+  return readSoundPreferenceValue() === true;
 }
 
 export function writeSoundPreference(enabled: boolean): void {
