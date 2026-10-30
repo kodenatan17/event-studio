@@ -21,8 +21,8 @@ export const demoWeddingManifest = {
   publicationVersion: 1,
   wedding: {
     slug: 'demo-wedding',
-    title: 'Raka & Sekar',
-    couple: { groom: 'Raka', bride: 'Sekar' },
+    title: 'Natan & Nurul',
+    couple: { groom: 'Natan', bride: 'Nurul' },
     timezone: 'Asia/Jakarta',
     locale: 'id-ID',
   },
