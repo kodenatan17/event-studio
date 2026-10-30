@@ -29,7 +29,7 @@ Security (always for auth/session/token/RSVP/guestbook/upload/manifest/logging c
 - uploads: byte-sniffed type, ≤8 MB, JPEG/PNG/WebP only (no SVG), EXIF stripped, short-lived scoped presign;
 - service-role and R2 keys server-only; no secrets in `NEXT_PUBLIC_*` or committed `.env*`; logs redact tokens, cookies, auth headers, names, notes and messages.
 
-3D viewer: resources and listeners disposed on scene switch, stale transitions cancelled, each hotspot has an accessible HTML control, 2D fallback reachable, no webcam request, audio muted by default.
+3D viewer (load `world-engine` plus the matching `threejs-*` skills for any 3D work (see the Three.js skills table in `CLAUDE.md`)): resources and listeners disposed on scene switch, stale transitions cancelled, each hotspot has an accessible HTML control, 2D fallback reachable, no webcam request, audio muted by default.
 
 Output (≤25 lines):
 ```

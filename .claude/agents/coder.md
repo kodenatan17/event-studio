@@ -19,6 +19,7 @@ Implement exactly the delegated task in `apps/web/`, `packages/*`, `supabase/mig
 Modes: **implement** (new code from a design) · **fix** (minimal change for a diagnosed root cause) · **refactor** (structure only, behavior unchanged) · **performance** (measured or clearly structural gains only).
 
 Rules:
+- Load the skills the task names; for 3D work always load `world-engine` plus the matching `threejs-*` skills for any 3D work (see the Three.js skills table in `CLAUDE.md`).
 - Find a similar file first and follow its naming and structure. In an empty area, follow `architecture.md` §4.2–4.3.
 - Smallest change that works: no unrelated refactors or rewrites. New dependencies only when the task needs them and they belong to the locked stack (`architecture.md` §2).
 - Request/response types come from `packages/contracts` (Zod); validate every write server-side. Use the error envelope and status semantics in `api-contracts.md` §9; never leak raw exceptions.

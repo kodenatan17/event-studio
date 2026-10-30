@@ -7,6 +7,18 @@ description: Map of the 3D viewer — React Three Fiber renderer, scene state ma
 
 Source of truth: `architecture.md` §3.2–3.4, §8, §11, §12 and the manifest in `api-contracts.md` §7. Features: FR-01..FR-04, FR-06..FR-08, FR-10.
 
+## Related skills
+Load the Three.js skills that match the work (WebGL + React Three Fiber, no Drei — D-018; skip WebGPU/TSL sections):
+| Area | Skills |
+|---|---|
+| Renderer, camera, loop, resize, disposal | `threejs-fundamentals` |
+| Hotspot picking, tap/joystick/keyboard input | `threejs-interaction` |
+| Avatar / couple rigs and clips (idle, walk, jump, wave) | `threejs-animation` |
+| Skin, velvet, gold, batik, lace looks | `threejs-materials`, `threejs-textures`, `threejs-shaders` |
+| Scene lights, lanterns, quality tiers | `threejs-lighting` |
+| GLB scenes and props | `threejs-loaders` |
+| Bloom / effects (high tier only) | `threejs-postprocessing` |
+
 ## Boundary
 `packages/world-engine` consumes typed scene definitions from the published manifest and emits typed `WorldAction`s. It never imports wedding entities. `packages/wedding-features` registers handlers and renders the HTML overlays.
 

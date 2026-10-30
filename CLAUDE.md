@@ -119,6 +119,22 @@ Load the relevant one before working in its area.
 | `wedding-security-boundaries` | Tenant isolation/RLS, invite tokens and guest sessions, manifest privacy, uploads, CSRF, logging; every security review |
 | `next-bundle-optimizer` | Auditing/reducing Next.js client bundles and initial-load work (`architecture.md` §12 budgets) |
 
+**Three.js skills.** Load these together with `world-engine` for any 3D work, picking every one that matches the area:
+
+| Skill | Use for |
+|---|---|
+| `threejs-fundamentals` | Scene/camera/renderer setup, render loop, transforms, resize, cleanup |
+| `threejs-interaction` | Raycast picking, pointer/touch/keyboard input, joystick/WASD controls, camera controls |
+| `threejs-animation` | Character rigs, procedural or keyframe clips, crossfading idle/walk/jump/wave |
+| `threejs-materials` | Material choice and tuning (PBR, sheen/velvet, skin, emissive lanterns) |
+| `threejs-textures` | CanvasTexture batik/embroidery, color spaces, texture memory and disposal |
+| `threejs-lighting` | Light setup and performance (hemisphere/directional, ≤2 point lights, no shadow maps by default) |
+| `threejs-loaders` | GLB/GLTF loading, caching, cloning, progress, disposal |
+| `threejs-postprocessing` | Bloom and other passes (high quality tier only, §12) |
+| `threejs-shaders` | Custom shader/material extensions when built-in materials are not enough |
+
+These skills also cover WebGPU/TSL; this project uses **WebGL with React Three Fiber and no Drei** (D-018), so apply the WebGL sections unless a task says otherwise.
+
 ## Invariants & gotchas
 - **Public manifest** (`api-contracts.md` §7) is an immutable published snapshot: no guest lists, token hashes, draft media, signed preview URLs, private object keys or unrelated user IDs. The viewer never reads draft JSON.
 - **Invite token = bearer capability:** ≥256-bit random, base64url in the link, only its SHA-256 hash stored. `/i/[slug]` sets the guest session cookie and 303-redirects to the clean `/w/[slug]` with `Referrer-Policy: no-referrer` and `Cache-Control: no-store`. Never log, persist client-side or return the token outside create/rotate responses.

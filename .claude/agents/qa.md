@@ -17,6 +17,7 @@ model: sonnet
 Verify behavior of the change. Write or update tests only — never change app code.
 
 Rules:
+- For 3D/viewer tests load `world-engine` plus the matching `threejs-*` skills for any 3D work (see the Three.js skills table in `CLAUDE.md`).
 - Follow the existing test layout and helpers; no new test frameworks (Vitest for unit/integration, Playwright for E2E — `specs.md` §13).
 - Unit (§13.1): manifest parsing, timezone formatting (`Asia/Jakarta` and non-Jakarta), scene state machine and rapid switches, action registry, decor variants, RSVP bounds (declined = 0), guestbook length/status/encoding, publish versioning and rollback.
 - Integration (§13.2): cross-tenant access, guest A vs guest B, invalid/revoked/rotated tokens, manifest privacy, draft invisible until publish, upload rejection, `409` on concurrent saves.

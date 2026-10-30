@@ -18,4 +18,5 @@ Route: refactor
 Refactor: <request>$ARGUMENTS</request>
 
 Route: scout(find) → coder(refactor) → reviewer.
+Skills: wedding-web-architecture; for 3D code add world-engine and the matching threejs-* skills (see CLAUDE.md).
 Large refactor (>~15 files, several features or shared core): scout(analyze) with a size estimate, then split the work into 2–3 phases (moves/renames → new structure → rules/docs/tests). Each phase is one coder(refactor) → reviewer on that phase's files only, and must end green (tests, typecheck, build). After each phase except the last, stop: report "Phase n/total done", its files, the plan with what is next, and options (continue / revise / stop); start the next phase only on the user's reply, without re-running scout. qa once at the end.

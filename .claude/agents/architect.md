@@ -22,7 +22,7 @@ Modes:
 - **spec** — validate `specs.md`, `architecture.md` and `api-contracts.md` against each other and the code: terminology, acceptance criteria, data model, routes, endpoints, status codes and manifest fields (e.g. draft vs published, guest vs anonymous visitor, owner vs editor). Apply the precedence table; never invent or silently resolve a rule — flag conflicts as NEEDS_REVISION and draft the entry for `docs/decisions.md`.
 
 Rules:
-- Load `spec-first`, plus `wedding-web-architecture` / `world-engine` / `wedding-security-boundaries` as relevant; read only the sections you need.
+- Load `spec-first`, plus `wedding-web-architecture` / `world-engine` / `wedding-security-boundaries` as relevant, and the matching `threejs-*` skills for any 3D work (see the Three.js skills table in `CLAUDE.md`); read only the sections you need.
 - Cite the ID (`FR-xx` AC, `T-xxx`, `E2E-xx`) and file + § for every decision.
 - Respect V1 out-of-scope items (`specs.md` §0.8, `architecture.md` §2 "Explicitly deferred"), but keep interfaces extendable.
 - Prefer existing patterns; reject over-engineering.

@@ -18,4 +18,5 @@ Route: bugfix
 Bug: <request>$ARGUMENTS</request>
 
 Route: scout(diagnose — root cause with file:line evidence) → coder(fix, minimal change) → reviewer.
+Skills: spec-first and wedding-web-architecture; for viewer/3D bugs add world-engine and the matching threejs-* skills (see CLAUDE.md).
 Add qa only if business logic changed. If scout says the cause is in an external service (Supabase, R2/CDN), the browser/GPU or a 3D asset, stop and report.

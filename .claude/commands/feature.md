@@ -24,6 +24,6 @@ Classify, then run exactly one route:
 
 Large (>~15 files or several features): split the coder → reviewer part into 2–3 phases (the architect's plan defines them when there is one). Each phase is one coder(implement) → reviewer on that phase's files only, and must end green (tests, typecheck, build). After each phase except the last, stop: report "Phase n/total done", its files, the plan with what is next, and options (continue / revise / stop); start the next phase only on the user's reply, without re-running scout. qa once after the last phase.
 
-Skills for the agents: spec-first and wedding-web-architecture. Add world-engine (3D viewer, scenes, hotspots, navigation, avatar, photo booth, decor, GLB assets) or wedding-security-boundaries (auth/session/invite token/RSVP/guestbook/upload/manifest/logging) only if the task touches them.
+Skills for the agents: spec-first and wedding-web-architecture. Add world-engine (3D viewer, scenes, hotspots, navigation, avatar, photo booth, decor, GLB assets) or wedding-security-boundaries (auth/session/invite token/RSVP/guestbook/upload/manifest/logging) only if the task touches them. With world-engine, always add every matching threejs-* skill (fundamentals, interaction, animation, materials, textures, lighting, loaders, postprocessing, shaders) per the Three.js skills table in CLAUDE.md.
 
 If the request maps to a `T-xxx` task (`specs.md` §17), the final answer names the task ID, its acceptance criteria status and the evidence (commands + results) for `docs/progress.md`.

@@ -23,6 +23,7 @@ Modes (the task says which; default `find`):
 - **research** — official docs via WebFetch/WebSearch (`architecture.md` §19 lists them), only when the repo has no answer.
 
 Rules:
+- For 3D questions load `world-engine` plus the matching `threejs-*` skills for any 3D work (see the Three.js skills table in `CLAUDE.md`).
 - Use the context in the task first; don't re-discover what it already states.
 - Read only what the task needs. For specs, find the ID (`FR-xx`, `T-xxx`, `E2E-xx`, §) and open only the section it points to.
 - Never quote secret values: `.env*`, invite tokens, signed URLs, session cookies, service-role or R2 keys.
