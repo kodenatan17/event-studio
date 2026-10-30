@@ -1,3 +1,4 @@
+import type { FigureOutfitId } from '../avatar/wardrobe';
 import type { Collider, Rect, Vec2 } from '../navigation/walk';
 
 export type Vec3 = readonly [number, number, number];
@@ -69,6 +70,16 @@ export type DecorItem =
       height: number;
     }
   | { type: 'janur'; position: Vec3; rotationY: number; scale?: number }
+  | {
+      /** A character that belongs to the template, like `janur`; never interactive. */
+      type: 'figure';
+      nodeName: string;
+      outfit: FigureOutfitId;
+      position: Vec3;
+      rotationY: number;
+      /** Start of its idle cycle (0..1), so two figures never move in step. */
+      phase: number;
+    }
   | { type: 'lanterns'; positions: readonly Vec2[] }
   | { type: 'mandala'; center: Vec2; radius: number }
   | { type: 'pond'; center: Vec2; size: Vec2 }
@@ -87,7 +98,8 @@ export type DecorItem =
   | { type: 'chandelier'; position: Vec3; scale?: number }
   | { type: 'pointLight'; position: Vec3; intensity: number; distance: number }
   | { type: 'flowers'; positions: readonly Vec3[] }
-  | { type: 'gentong'; positions: readonly Vec2[] };
+  | { type: 'gentong'; positions: readonly Vec2[] }
+  | { type: 'gardenDetails' };
 
 /** Code-side scene layout mirroring the GLB node contract (architecture.md §8.5). */
 export interface PrimitiveLayout {

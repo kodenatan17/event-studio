@@ -1,11 +1,22 @@
+import type { RenderTier } from '../../renderer/capabilities';
+import type { WorldStore } from '../../scene-manager/store';
 import type { DecorItem } from '../../templates/types';
 import { PALETTE } from '../materials';
+import { GardenDetails } from './GardenDetails';
+import { Figure } from './Figure';
 import { Flowers, Gentong, Janur, Lanterns, Mandala, Plumerias, Pond, TreeLine } from './nature';
 import { Part } from './Part';
 import { Chandelier, Drapes, Gapura, Gebyok, Joglo, RoundTables, Wall } from './structures';
 
+interface DecorProps {
+  item: DecorItem;
+  store: WorldStore;
+  tier: RenderTier;
+  reducedMotion: boolean;
+}
+
 /** Renders one decor entry of a primitive layout (non-interactive; never raycast). */
-export function Decor({ item }: { item: DecorItem }) {
+export function Decor({ item, store, tier, reducedMotion }: DecorProps) {
   switch (item.type) {
     case 'ground':
       return (
@@ -40,6 +51,8 @@ export function Decor({ item }: { item: DecorItem }) {
       return <Gapura {...item} />;
     case 'janur':
       return <Janur {...item} />;
+    case 'figure':
+      return <Figure item={item} store={store} tier={tier} reducedMotion={reducedMotion} />;
     case 'lanterns':
       return <Lanterns positions={item.positions} />;
     case 'mandala':
@@ -72,6 +85,8 @@ export function Decor({ item }: { item: DecorItem }) {
       );
     case 'flowers':
       return <Flowers positions={item.positions} />;
+    case 'gardenDetails':
+      return <GardenDetails />;
     case 'gentong':
       return <Gentong positions={item.positions} />;
     default: {

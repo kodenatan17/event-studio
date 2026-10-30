@@ -360,16 +360,26 @@ const weddingGarden: PrimitiveLayout = {
       eaveHeight: 2.9,
       pillars: CANOPY_PILLARS,
     },
-    { type: 'drapes', positions: CANOPY_PILLARS.slice(2), height: 2.7 },
+    { type: 'gardenDetails' },
     { type: 'janur', position: [-2.4, 0, -2.7], rotationY: 0, scale: 0.9 },
     { type: 'janur', position: [2.4, 0, -2.7], rotationY: Math.PI, scale: 0.9 },
     { type: 'box', material: 'gold', position: [0, 1.02, -4.7], size: [0.5, 0.04, 0.3] },
+    // The couple stand on the platform in front of the table, the groom on the viewer's left.
     {
-      type: 'flowers',
-      positions: [
-        [-0.55, 1.05, -4.75],
-        [0.55, 1.05, -4.75],
-      ],
+      type: 'figure',
+      nodeName: 'COUPLE_GROOM',
+      outfit: 'groom-jawa',
+      position: [-0.48, 0.2, -3.45],
+      rotationY: 0.15,
+      phase: 0,
+    },
+    {
+      type: 'figure',
+      nodeName: 'COUPLE_BRIDE',
+      outfit: 'bride-jawa',
+      position: [0.48, 0.2, -3.45],
+      rotationY: -0.15,
+      phase: 0.37,
     },
     // Photo booth: flower-framed backdrop with a janur arch above.
     {
