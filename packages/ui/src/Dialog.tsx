@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useEffectEvent, useId, useLayoutEffect, useRef, useState } from 'react';
+import { useId } from 'react';
 import type { KeyboardEvent, ReactNode, RefObject } from 'react';
 
 import { Button } from './Button';
-import { openModalDialog } from './dialogLifecycle';
+import { useModalDialog } from './useModalDialog';
 
 export interface DialogProps {
   title: ReactNode;
@@ -22,20 +22,7 @@ export interface DialogProps {
 
 const SIZES = { md: 'max-w-lg', lg: 'max-w-2xl' } as const;
 
-/**
- * `body` means no real opener (3D canvas tap, or Safari/iOS where clicked buttons don't take
- * focus); treat it as missing so `fallbackFocus` receives focus on close.
- */
-function currentFocus(): HTMLElement | null {
-  if (typeof document === 'undefined') return null;
-  const active = document.activeElement;
-  return active instanceof HTMLElement && active !== document.body ? active : null;
-}
-
-/**
- * Modal dialog on native `<dialog>` + `showModal()` (architecture.md §3.4, §12): the browser
- * keeps focus inside and makes the page inert; the dialog is open while it is mounted.
- */
+/** Centred modal on the shared native `<dialog>` lifecycle (`useModalDialog`). */
 export function Dialog({
   title,
   onClose,
@@ -46,34 +33,8 @@ export function Dialog({
   size = 'md',
   ...dataAttributes
 }: DialogProps) {
-  const ref = useRef<HTMLDialogElement>(null);
-  const closedRef = useRef(false);
+  const { ref, close } = useModalDialog({ onClose, fallbackFocus });
   const titleId = useId();
-  // Captured while rendering, before the rest of the page turns inert and loses focus.
-  const [opener] = useState(currentFocus);
-
-  const close = () => {
-    if (closedRef.current) return;
-    closedRef.current = true;
-    onClose();
-  };
-  const requestClose = useEffectEvent(close);
-
-  useLayoutEffect(() => {
-    const dialog = ref.current;
-    if (!dialog) return;
-    closedRef.current = false;
-    return openModalDialog(dialog, () => requestClose());
-  }, []);
-
-  // Passive cleanup runs after the commit that removes the dialog and the page's `inert`.
-  useEffect(
-    () => () => {
-      const target = opener?.isConnected ? opener : fallbackFocus?.current;
-      target?.focus({ preventScroll: true });
-    },
-    [opener, fallbackFocus],
-  );
 
   return (
     <dialog
