@@ -1,0 +1,19 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+
+  // Agentic roles and slash commands live in .opencode/.
+  // Project skills are discovered automatically from .claude/skills and .agents/skills.
+
+  // Guardrails from AGENTS.md: staging, committing, pushing, rewriting history,
+  // discarding work, or deleting a tree requires an explicit approval.
+  "permissions": [
+    { "action": "shell", "resource": "git add *", "effect": "ask" },
+    { "action": "shell", "resource": "git commit *", "effect": "ask" },
+    { "action": "shell", "resource": "git push *", "effect": "ask" },
+    { "action": "shell", "resource": "git reset --hard *", "effect": "ask" },
+    { "action": "shell", "resource": "git clean *", "effect": "ask" },
+    { "action": "shell", "resource": "git checkout -- *", "effect": "ask" },
+    { "action": "shell", "resource": "git restore *", "effect": "ask" },
+    { "action": "shell", "resource": "rm -rf *", "effect": "ask" },
+  ],
+}
