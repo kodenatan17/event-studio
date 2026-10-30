@@ -38,6 +38,8 @@ const restrictEngineImports = (allowFixtures) => [
 ];
 
 export default defineConfig(
+  // Asset source packs (assets/source/*) hold generator scripts and viewers; never linted.
+  { ignores: ['assets/source/**'] },
   base,
   {
     files: ['apps/web/**/*.{js,jsx,mjs,ts,tsx}'],

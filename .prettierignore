@@ -2,6 +2,9 @@
 *.md
 .claude/
 
+# Asset source packs (generator scripts, HTML viewer, JSON): kept verbatim
+assets/source/
+
 # Generated / lockfiles
 pnpm-lock.yaml
 node_modules/

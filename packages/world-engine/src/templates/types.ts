@@ -42,6 +42,10 @@ export interface CameraRig {
   lookHeight: number;
   /** Look this far past the avatar (toward -z) so the scene ahead stays in frame. */
   lookAhead: number;
+  /** Landscape vertical field of view in degrees (default 45); portrait widens it. */
+  fov?: number;
+  /** Highest camera point above the avatar's floor, e.g. to stay below an interior's beams. */
+  maxHeight?: number;
 }
 
 /** Procedural decor primitives and prefabs; `scenes/decor` renders each `type`. */
@@ -87,6 +91,7 @@ export type DecorItem =
 
 /** Code-side scene layout mirroring the GLB node contract (architecture.md §8.5). */
 export interface PrimitiveLayout {
+  kind: 'primitive';
   /** `FLOOR_WALKABLE` at y = 0. */
   floor: Rect & { material: MaterialKey };
   /** `COLLIDER_<id>` boxes on the floor plane. */
@@ -101,8 +106,42 @@ export interface PrimitiveLayout {
   decor: readonly DecorItem[];
 }
 
-/** Trusted template catalog entry (D-008). */
-export type TemplateDefinition =
-  | { kind: 'primitive'; layouts: Readonly<Record<string, PrimitiveLayout>> }
-  /** T-501: Blender GLB scenes from the trusted catalog/CDN — not implemented yet. */
-  | { kind: 'gltf' };
+/** Engine-defined invisible hit box for a manifest node the GLB does not author. */
+export interface TriggerBox {
+  /** Center of the box. */
+  position: Vec3;
+  size: Vec3;
+}
+
+/**
+ * GLB scene from the trusted code-side catalog (D-008, T-501). The manifest `assetUrl` stays a
+ * locator and is never fetched; `url` is the only file loaded. Coordinates: meters, Y-up.
+ */
+export interface GltfLayout {
+  kind: 'gltf';
+  /** Same-origin GLB path; plain `GLTFLoader` (no Draco/Meshopt/KTX2 extensions). */
+  url: string;
+  /**
+   * Manifest node (`HS_*`, `PORTAL_*`) → GLB node name, or a `triggers` key. Only mapped nodes
+   * are interactive; unknown GLB names never resolve to an action (architecture.md §8.3).
+   */
+  nodeMap: Readonly<Record<string, string>>;
+  /** Engine trigger boxes referenced from `nodeMap` (e.g. an open edge without a door node). */
+  triggers: Readonly<Record<string, TriggerBox>>;
+  /** Walkable rect at height `y`; `nodeName` is the GLB mesh used as tap-to-move target. */
+  floor: Rect & { y: number; nodeName: string };
+  /** `COLLIDER_*` boxes on the floor plane (the GLB carries no colliders). */
+  colliders: readonly Collider[];
+  /** `SPAWN_ENTRY`, `SPAWN_FROM_*` → floor point. */
+  spawnPoints: Readonly<Record<string, Vec2>>;
+  camera: CameraRig;
+  /** Shared-primitive surroundings outside the GLB (ground, skyline). */
+  decor: readonly DecorItem[];
+}
+
+export type SceneLayout = PrimitiveLayout | GltfLayout;
+
+/** Trusted template catalog entry (D-008): one layout per scene id. */
+export interface TemplateDefinition {
+  layouts: Readonly<Record<string, SceneLayout>>;
+}

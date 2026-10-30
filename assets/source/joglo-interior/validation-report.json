@@ -1,0 +1,156 @@
+[
+  {
+    "file": "buku_perjalanan_interaktif.glb",
+    "bytes": 87224,
+    "nodes": 10,
+    "triangles": 120,
+    "extents_m": [
+      1.07,
+      0.35,
+      0.77
+    ]
+  },
+  {
+    "file": "gamelan_saron_dekorasi.glb",
+    "bytes": 173688,
+    "nodes": 16,
+    "triangles": 280,
+    "extents_m": [
+      1.96,
+      1.27,
+      0.76
+    ]
+  },
+  {
+    "file": "gebyok_ukir_jawa.glb",
+    "bytes": 319472,
+    "nodes": 65,
+    "triangles": 964,
+    "extents_m": [
+      7.2,
+      3.79,
+      0.31
+    ]
+  },
+  {
+    "file": "joglo_interior_shell.glb",
+    "bytes": 454716,
+    "nodes": 121,
+    "triangles": 1508,
+    "extents_m": [
+      14.48,
+      7.81,
+      11.23
+    ]
+  },
+  {
+    "file": "joglo_living_room_complete.glb",
+    "bytes": 1161264,
+    "nodes": 616,
+    "triangles": 10253,
+    "extents_m": [
+      14.48,
+      7.81,
+      11.23
+    ]
+  },
+  {
+    "file": "joglo_living_room_mobile_optimized.glb",
+    "bytes": 1051008,
+    "nodes": 34,
+    "triangles": 10253,
+    "extents_m": [
+      14.48,
+      7.81,
+      11.23
+    ]
+  },
+  {
+    "file": "karpet_batik_kawung.glb",
+    "bytes": 20828,
+    "nodes": 5,
+    "triangles": 60,
+    "extents_m": [
+      3.97,
+      0.06,
+      2.7
+    ]
+  },
+  {
+    "file": "kursi_ukir_jawa.glb",
+    "bytes": 235892,
+    "nodes": 14,
+    "triangles": 168,
+    "extents_m": [
+      0.79,
+      1.54,
+      0.75
+    ]
+  },
+  {
+    "file": "lampu_gantung_jawa.glb",
+    "bytes": 92504,
+    "nodes": 9,
+    "triangles": 196,
+    "extents_m": [
+      0.61,
+      1.34,
+      0.61
+    ]
+  },
+  {
+    "file": "meja_buku_perjalanan.glb",
+    "bytes": 158292,
+    "nodes": 10,
+    "triangles": 120,
+    "extents_m": [
+      2.1,
+      0.81,
+      1.2
+    ]
+  },
+  {
+    "file": "pigura_foto_jawa.glb",
+    "bytes": 85532,
+    "nodes": 9,
+    "triangles": 108,
+    "extents_m": [
+      1.26,
+      1.57,
+      0.18
+    ]
+  },
+  {
+    "file": "sofa_kayu_jawa.glb",
+    "bytes": 169380,
+    "nodes": 18,
+    "triangles": 216,
+    "extents_m": [
+      2.56,
+      1.75,
+      0.88
+    ]
+  },
+  {
+    "file": "vas_melati.glb",
+    "bytes": 112224,
+    "nodes": 54,
+    "triangles": 1212,
+    "extents_m": [
+      0.46,
+      1.27,
+      0.46
+    ]
+  },
+  {
+    "file": "wayang_gunungan_display.glb",
+    "bytes": 89408,
+    "nodes": 11,
+    "triangles": 145,
+    "extents_m": [
+      1.36,
+      2.12,
+      0.35
+    ]
+  }
+]

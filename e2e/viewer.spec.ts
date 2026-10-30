@@ -55,7 +55,7 @@ test('E2E-02 entrance → living room → story → next chapter → close retur
   expect(pageErrors).toEqual([]);
 });
 
-test('E2E-03 gallery: open photo 1, ArrowRight shows 2/3, Escape closes; reopen, browser back closes dialog and URL unchanged', async ({
+test('E2E-03 gallery: open photo 1, ArrowRight shows 2/6, Escape closes; reopen, browser back closes dialog and URL unchanged', async ({
   page,
 }) => {
   const status = await openLivingRoom(page);
@@ -64,7 +64,7 @@ test('E2E-03 gallery: open photo 1, ArrowRight shows 2/3, Escape closes; reopen,
 
   await frame.click();
   const dialog = page.getByRole('dialog', { name: 'Galeri Foto' });
-  await expect(dialog.getByTestId('gallery-progress')).toHaveText('1 / 3');
+  await expect(dialog.getByTestId('gallery-progress')).toHaveText('1 / 6');
   await expect(dialog.getByText('Foto contoh pertama')).toBeVisible();
   // Fixture media never resolve (D-016): the designed fallback tile renders, with the alt text.
   await expect(
@@ -73,7 +73,7 @@ test('E2E-03 gallery: open photo 1, ArrowRight shows 2/3, Escape closes; reopen,
   await expect(dialog.getByText('Foto belum tersedia')).toBeVisible();
 
   await page.keyboard.press('ArrowRight');
-  await expect(dialog.getByTestId('gallery-progress')).toHaveText('2 / 3');
+  await expect(dialog.getByTestId('gallery-progress')).toHaveText('2 / 6');
   await expect(dialog.getByText('Foto contoh kedua')).toBeVisible();
 
   await page.keyboard.press('Escape');
@@ -83,12 +83,30 @@ test('E2E-03 gallery: open photo 1, ArrowRight shows 2/3, Escape closes; reopen,
   expect(page.url()).toBe(url);
 
   await frame.click();
-  await expect(dialog.getByTestId('gallery-progress')).toHaveText('1 / 3');
+  await expect(dialog.getByTestId('gallery-progress')).toHaveText('1 / 6');
   await page.goBack();
   await expect(dialog).toHaveCount(0);
   await expectScene(status, 'living-room');
   expect(page.url()).toBe(url);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Raka & Sekar');
+});
+
+test('[FR-02] living room shows 6 photo controls', async ({ page }) => {
+  const status = await openLivingRoom(page);
+
+  for (let index = 1; index <= 6; index += 1) {
+    const frame = control(page, `photo-frame-0${index}`);
+    await expect(frame).toBeVisible();
+    await expect(frame).toHaveText(`Foto ${index}`);
+  }
+
+  // The last frame opens the gallery at its own photo.
+  await control(page, 'photo-frame-06').click();
+  const dialog = page.getByRole('dialog', { name: 'Galeri Foto' });
+  await expect(dialog.getByTestId('gallery-progress')).toHaveText('6 / 6');
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  await expectScene(status, 'living-room');
 });
 
 test('[FR-05] event info shows Akad Nikah with WIB time and https maps link', async ({ page }) => {
@@ -122,6 +140,7 @@ test('[FR-05] RSVP shows invitation-only message, no form', async ({ page }) => 
 });
 
 test('[T-301] garden/hall hotspots open event, booth and guestbook overlays', async ({ page }) => {
+  test.slow(); // GLB living room is slow on SwiftShader; timeout only.
   await page.goto('/w/demo-wedding');
   const status = page.getByTestId('world-status');
   await expectScene(status, 'entrance');

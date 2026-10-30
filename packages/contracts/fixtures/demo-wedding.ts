@@ -77,6 +77,24 @@ export const demoWeddingManifest = {
             action: 'open_gallery',
             payload: { startIndex: 2 },
           },
+          {
+            id: 'photo-frame-04',
+            nodeName: 'HS_GALLERY_04',
+            action: 'open_gallery',
+            payload: { startIndex: 3 },
+          },
+          {
+            id: 'photo-frame-05',
+            nodeName: 'HS_GALLERY_05',
+            action: 'open_gallery',
+            payload: { startIndex: 4 },
+          },
+          {
+            id: 'photo-frame-06',
+            nodeName: 'HS_GALLERY_06',
+            action: 'open_gallery',
+            payload: { startIndex: 5 },
+          },
         ],
       },
       {
@@ -127,6 +145,23 @@ export const demoWeddingManifest = {
       id: 'gallery-3',
       src: `${MEDIA_BASE}/foto-3.webp`,
       alt: 'Foto contoh pasangan di pendopo',
+    },
+    {
+      id: 'gallery-4',
+      src: `${MEDIA_BASE}/foto-4.webp`,
+      alt: 'Foto contoh pasangan di depan gebyok ukir',
+      caption: 'Foto contoh keempat',
+    },
+    {
+      id: 'gallery-5',
+      src: `${MEDIA_BASE}/foto-5.webp`,
+      alt: 'Foto contoh pasangan di tepi kolam teratai',
+      caption: 'Foto contoh kelima',
+    },
+    {
+      id: 'gallery-6',
+      src: `${MEDIA_BASE}/foto-6.webp`,
+      alt: 'Foto contoh pasangan di bawah lampu gantung',
     },
   ],
   story: [

@@ -31,13 +31,16 @@ export type { InteractiveTag } from './interaction/registry';
 export { clampToFloor, isBlocked, MAX_FRAME_DELTA, stepToward } from './navigation/walk';
 export type { Collider, Rect, StepResult, Vec2 } from './navigation/walk';
 export { detectWebGL, MAX_DPR, resolveDpr, usePrefersReducedMotion } from './renderer/capabilities';
-export { getPrimitiveLayout, templates } from './templates/blockout';
+export { getSceneLayout, templates } from './templates/blockout';
 export type {
   CameraRig,
   DecorItem,
+  GltfLayout,
   MaterialKey,
   NodePlacement,
   PrimitiveLayout,
+  SceneLayout,
   TemplateDefinition,
+  TriggerBox,
   Vec3,
 } from './templates/types';

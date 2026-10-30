@@ -68,7 +68,7 @@ test('E2E-12 mobile: no horizontal scroll, nav buttons ≥44×44 inside viewport
   await control(page, 'photo-frame-01').tap();
   await expect(status).toHaveAttribute('data-world-status', 'OVERLAY_OPEN');
   const dialog = page.getByRole('dialog', { name: 'Galeri Foto' });
-  await expect(dialog.getByTestId('gallery-progress')).toHaveText('1 / 3');
+  await expect(dialog.getByTestId('gallery-progress')).toHaveText('1 / 6');
   const dialogBox = await dialog.boundingBox();
   if (!dialogBox) throw new Error('dialog not rendered');
   expect(dialogBox.x).toBeGreaterThanOrEqual(0);

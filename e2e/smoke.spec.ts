@@ -24,7 +24,7 @@ test('[T-003] demo wedding shows dev banner and renders the 3D canvas', async ({
   expect(pageErrors).toEqual([]);
 });
 
-test('[T-003] unknown wedding slug returns 404', async ({ page }) => {
+test('[FR-01][T-003] unknown wedding slug returns 404', async ({ page }) => {
   const response = await page.goto('/w/unknown');
 
   expect(response?.status()).toBe(404);

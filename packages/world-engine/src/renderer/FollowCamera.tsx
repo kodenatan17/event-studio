@@ -14,6 +14,10 @@ interface FollowCameraProps {
   lookAhead: number;
   /** Floor center x; portrait framing leans sideways toward it so the room stays in view. */
   focusCenterX?: number;
+  /** Landscape vertical field of view (degrees); portrait widens it. */
+  fov?: number;
+  /** Caps the camera height above the avatar (portrait lift included). */
+  maxHeight?: number;
   reducedMotion: boolean;
 }
 
@@ -41,10 +45,10 @@ interface Framing {
  * the room center, so a narrow screen shows the room's key props instead of empty floor around an
  * avatar standing near a wall. Landscape keeps the plain follow view.
  */
-function framingFor(aspect: number): Framing {
-  if (aspect >= 1) return { fov: BASE_FOV, distance: 1, lift: 1, centerPull: 0 };
+function framingFor(aspect: number, baseFov: number): Framing {
+  if (aspect >= 1) return { fov: baseFov, distance: 1, lift: 1, centerPull: 0 };
   const portrait = 1 - aspect;
-  const halfFov = (BASE_FOV * Math.PI) / 360;
+  const halfFov = (baseFov * Math.PI) / 360;
   const fov = (2 * Math.atan(Math.tan(halfFov) / Math.pow(aspect, 0.75)) * 180) / Math.PI;
   return {
     fov: Math.min(MAX_PORTRAIT_FOV, fov),
@@ -63,6 +67,8 @@ export function FollowCamera({
   lookHeight,
   lookAhead,
   focusCenterX,
+  fov: baseFov = BASE_FOV,
+  maxHeight = Infinity,
   reducedMotion,
 }: FollowCameraProps) {
   const look = useRef(new Vector3());
@@ -71,7 +77,10 @@ export function FollowCamera({
   const initialized = useRef(false);
 
   useFrame(({ camera, size }, delta) => {
-    const { fov, distance, lift, centerPull } = framingFor(size.width / Math.max(size.height, 1));
+    const { fov, distance, lift, centerPull } = framingFor(
+      size.width / Math.max(size.height, 1),
+      baseFov,
+    );
     if (camera instanceof PerspectiveCamera && Math.abs(camera.fov - fov) > 0.01) {
       camera.fov = fov;
       camera.updateProjectionMatrix();
@@ -83,7 +92,7 @@ export function FollowCamera({
         : avatar.x + lean((focusCenterX - avatar.x) * centerPull);
     desired.current.set(
       focusX + offset[0] * distance,
-      avatar.y + offset[1] * distance * lift,
+      avatar.y + Math.min(offset[1] * distance * lift, maxHeight),
       avatar.z + offset[2] * distance,
     );
     lookTarget.current.set(focusX, avatar.y + lookHeight, avatar.z - lookAhead);

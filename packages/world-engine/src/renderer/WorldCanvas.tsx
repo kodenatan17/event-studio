@@ -2,14 +2,15 @@
 
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import type { SceneDefinition, WorldAction } from '@undangan/contracts/world';
-import { Component, useEffect, useRef } from 'react';
+import { Component, Suspense, useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 
 import type { WorldStore } from '../scene-manager/store';
 import { useWorldStore } from '../scene-manager/useWorldStore';
 import { Environment } from '../scenes/Environment';
+import { clearGltfCache, GltfScene } from '../scenes/GltfScene';
 import { PrimitiveScene } from '../scenes/PrimitiveScene';
-import { getPrimitiveLayout } from '../templates/blockout';
+import { getSceneLayout } from '../templates/blockout';
 import { resolveDpr, usePrefersReducedMotion } from './capabilities';
 
 export interface WorldCanvasProps {
@@ -43,6 +44,39 @@ class CanvasErrorBoundary extends Component<
   override render() {
     return this.state.failed ? null : this.props.children;
   }
+}
+
+/** Unexpected scene render errors also end the transition in `ERROR` with retry and 2D (D-017). */
+class SceneAssetBoundary extends Component<
+  { onError: () => void; children: ReactNode },
+  { failed: boolean }
+> {
+  override state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  override componentDidCatch(error: unknown) {
+    console.error(
+      '[world-engine] scene asset error',
+      error instanceof Error ? error.name : 'unknown',
+    );
+    this.props.onError();
+  }
+
+  override render() {
+    return this.state.failed ? null : this.props.children;
+  }
+}
+
+/** Marks the request ready after the first frame with its scene mounted (inside any Suspense). */
+function ReadySignal({ store, requestId }: { store: WorldStore; requestId: number }) {
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => store.getState().sceneReady(requestId));
+    return () => cancelAnimationFrame(frame);
+  }, [store, requestId]);
+  return null;
 }
 
 function RendererProbes({ store }: { store: WorldStore }) {
@@ -81,7 +115,8 @@ interface SceneHostProps {
 
 /**
  * Scene boundary keyed by `sceneId:requestId`: mounting a new key unmounts (and releases) the
- * previous scene. Only the matching request may mark itself ready (architecture.md §8.4).
+ * previous scene. Picks the renderer by `layout.kind`. Only the matching request may mark itself
+ * ready (architecture.md §8.4).
  */
 function SceneHost({
   store,
@@ -92,7 +127,7 @@ function SceneHost({
   reducedMotion,
   isActionEnabled,
 }: SceneHostProps) {
-  const layout = scene ? getPrimitiveLayout(templateId, scene.id) : null;
+  const layout = scene ? getSceneLayout(templateId, scene.id) : null;
 
   useEffect(() => {
     const api = store.getState();
@@ -101,25 +136,46 @@ function SceneHost({
       api.sceneFailed(requestId, 'UNKNOWN_SCENE');
       return;
     }
-    if (!layout) {
-      api.sceneFailed(requestId, 'UNKNOWN_TEMPLATE');
-      return;
-    }
-    // Ready after the first frame with the new scene mounted.
-    const frame = requestAnimationFrame(() => store.getState().sceneReady(requestId));
-    return () => cancelAnimationFrame(frame);
+    if (!layout) api.sceneFailed(requestId, 'UNKNOWN_TEMPLATE');
   }, [store, requestId, scene, layout]);
 
   if (!scene || !layout) return null;
+  if (layout.kind === 'primitive') {
+    return (
+      <>
+        <PrimitiveScene
+          store={store}
+          scene={scene}
+          layout={layout}
+          spawnPointId={spawnPointId}
+          reducedMotion={reducedMotion}
+          isActionEnabled={isActionEnabled}
+        />
+        <ReadySignal store={store} requestId={requestId} />
+      </>
+    );
+  }
+  // The HTML loading veil stays up while the GLB suspends; ready only fires once it rendered. A
+  // failed load reports from an effect before ReadySignal's frame, so that late ready is dropped.
+  const failAsset = () => {
+    clearGltfCache(layout.url);
+    store.getState().sceneFailed(requestId, 'ASSET_LOAD_FAILED');
+  };
   return (
-    <PrimitiveScene
-      store={store}
-      scene={scene}
-      layout={layout}
-      spawnPointId={spawnPointId}
-      reducedMotion={reducedMotion}
-      isActionEnabled={isActionEnabled}
-    />
+    <SceneAssetBoundary onError={failAsset}>
+      <Suspense fallback={null}>
+        <GltfScene
+          store={store}
+          scene={scene}
+          layout={layout}
+          spawnPointId={spawnPointId}
+          reducedMotion={reducedMotion}
+          isActionEnabled={isActionEnabled}
+          onLoadFailed={failAsset}
+        />
+        <ReadySignal store={store} requestId={requestId} />
+      </Suspense>
+    </SceneAssetBoundary>
   );
 }
 

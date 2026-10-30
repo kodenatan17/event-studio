@@ -31,7 +31,7 @@ test('E2E-10 WebGL disabled → 2D fallback with names, Akad Nikah, a chapter ti
 
   const gallery = fallback.getByRole('region', { name: 'Galeri Foto' });
   await gallery.scrollIntoViewIfNeeded();
-  await expect(gallery.getByTestId('photo-fallback')).toHaveCount(3);
+  await expect(gallery.getByTestId('photo-fallback')).toHaveCount(6);
   await expect(gallery.getByText('Foto belum tersedia').first()).toBeVisible();
 
   const rsvp = fallback.getByRole('region', { name: 'RSVP' });
@@ -92,7 +92,33 @@ test('[T-108] Mode 2D button switches a running 3D world to the 2D invitation', 
   const gallery = fallback.getByRole('region', { name: 'Galeri Foto' });
   await gallery.getByRole('button', { name: /^Buka foto 2/ }).click();
   const dialog = page.getByRole('dialog', { name: 'Galeri Foto' });
-  await expect(dialog.getByTestId('gallery-progress')).toHaveText('2 / 3');
+  await expect(dialog.getByTestId('gallery-progress')).toHaveText('2 / 6');
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
+});
+
+test('[D-017] living-room GLB 404 → ERROR panel with Coba lagi and Mode 2D', async ({ page }) => {
+  const pageErrors: string[] = [];
+  page.on('pageerror', (error) => pageErrors.push(error.message));
+  await page.route('**/templates/joglo/**', (route) => route.fulfill({ status: 404 }));
+
+  await page.goto('/w/demo-wedding');
+  const status = page.getByTestId('world-status');
+  await expect(status).toHaveAttribute('data-world-status', 'READY', { timeout: 30_000 });
+  await page.locator('[data-hotspot-id="front-door"]').click();
+
+  // Asset failure is ERROR (retry + 2D), not the render-error 2D fallback (D-017).
+  await expect(status).toHaveAttribute('data-world-status', 'ERROR', { timeout: 30_000 });
+  const alert = page.getByRole('alert').filter({ hasText: 'Ruangan tidak dapat dimuat.' });
+  await expect(alert).toBeVisible();
+  await expect(alert.getByRole('button', { name: 'Coba lagi' })).toBeVisible();
+  await expect(alert.getByRole('button', { name: 'Mode 2D' })).toBeVisible();
+  await expect(page.getByTestId('fallback-2d')).toHaveCount(0);
+
+  // Once the asset is reachable again, "Coba lagi" loads the living room (no cached failure).
+  await page.unroute('**/templates/joglo/**');
+  await alert.getByRole('button', { name: 'Coba lagi' }).click();
+  await expect(status).toHaveAttribute('data-world-status', 'READY', { timeout: 30_000 });
+  await expect(status).toHaveAttribute('data-scene-id', 'living-room');
+  expect(pageErrors).toEqual([]);
 });

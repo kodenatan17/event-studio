@@ -1,9 +1,10 @@
 import type { Collider, Vec2 } from '../navigation/walk';
-import type { PrimitiveLayout, TemplateDefinition } from './types';
+import type { GltfLayout, PrimitiveLayout, SceneLayout, TemplateDefinition } from './types';
 
 /**
  * `blockout` template: procedural Javanese wedding courtyard (pelataran adat Jawa) built from
- * primitives. Prototype art only — ENGINEERING_DONE / ART_PENDING (architecture.md §11.2, D-019).
+ * primitives, except the living room, which loads the joglo interior GLB from the code-side `url`.
+ * Prototype art only — ENGINEERING_DONE / ART_PENDING (architecture.md §11.2, D-019).
  * Never fetches `assetUrl`/`navmeshUrl` (D-008). Units: meters; +z faces the camera.
  */
 
@@ -80,6 +81,7 @@ const ENTRANCE_TREES_INSIDE: Vec2[] = [
 ];
 
 const entrance: PrimitiveLayout = {
+  kind: 'primitive',
   floor: { minX: -6.2, maxX: 6.2, minZ: -3.6, maxZ: 7, material: 'pavingDark' },
   colliders: [
     collider('WALL_LEFT', -4.9, -4.6, 5.2, 0.7),
@@ -202,141 +204,80 @@ const entrance: PrimitiveLayout = {
 };
 
 // ---------------------------------------------------------------------------------------------
-// Living room — Javanese "dalem": teak interior, carved gebyok, low table with the story book.
+// Living room — joglo interior GLB (assets/source/joglo-interior, ART_PENDING): saka guru, carved
+// gebyok, story table with the book, six photo frames on the back wall, open front toward +z.
 // ---------------------------------------------------------------------------------------------
 
-const livingRoom: PrimitiveLayout = {
-  floor: { minX: -5.6, maxX: 5.6, minZ: -4.5, maxZ: 4.6, material: 'teakFloor' },
+/** Saka guru umpak bases and perimeter post bases (`build_joglo_interior.py` make_shell). */
+const JOGLO_SAKA_GURU: Vec2[] = [-2.3, 2.3].flatMap((x) =>
+  [-2.35, 2.35].map((z) => [x, z] as const),
+);
+const JOGLO_POSTS: Vec2[] = [-6.25, -2.95, 2.95, 6.25].flatMap((x) =>
+  [-4.65, 4.6].map((z) => [x, z] as const),
+);
+const JOGLO_VASES: Vec2[] = [
+  [-5.4, -3.7],
+  [5.4, -3.7],
+  [-5.4, 4.0],
+  [5.4, 4.0],
+];
+
+const livingRoom: GltfLayout = {
+  kind: 'gltf',
+  url: '/templates/joglo/1.0.0/living-room.glb',
+  nodeMap: {
+    HS_STORY: 'STORY_BOOK__HS_STORY_BOOK',
+    HS_GALLERY_01: 'GALLERY_01__HS_GALLERY_01',
+    HS_GALLERY_02: 'GALLERY_02__HS_GALLERY_01',
+    HS_GALLERY_03: 'GALLERY_03__HS_GALLERY_01',
+    HS_GALLERY_04: 'GALLERY_04__HS_GALLERY_01',
+    HS_GALLERY_05: 'GALLERY_05__HS_GALLERY_01',
+    HS_GALLERY_06: 'GALLERY_06__HS_GALLERY_01',
+    PORTAL_GARDEN_DOOR: 'HS_PORTAL_WEDDING_GARDEN',
+    PORTAL_HALL_DOOR: 'HS_PORTAL_RECEPTION_HALL',
+    PORTAL_BACK_TO_ENTRANCE: 'TRIGGER_BACK_TO_ENTRANCE',
+  },
+  triggers: {
+    // The GLB has no front door: a low threshold strip along the open front edge.
+    TRIGGER_BACK_TO_ENTRANCE: { position: [0, 0.47, 5.05], size: [3.2, 0.2, 0.6] },
+  },
+  // `scene-config.json` walkable rect; floor finish top at y ≈ 0.37.
+  floor: {
+    minX: -6.4,
+    maxX: 6.4,
+    minZ: -4.65,
+    maxZ: 4.65,
+    y: 0.37,
+    nodeName: 'SHELL__FLOOR_WALKABLE',
+  },
   colliders: [
-    collider('TABLE', 0, 0.4, 2.0, 1.2),
-    collider('SOFA', 0, -1.55, 2.8, 0.95),
-    collider('CHAIR_LEFT', -2.05, 0.4, 0.95, 0.95),
-    collider('CHAIR_RIGHT', 2.05, 0.4, 0.95, 0.95),
-    collider('GEBYOK', 0, -4.75, 5.4, 0.5),
-    collider('PLANT_LEFT', -5.15, -4.05, 0.7, 0.7),
-    collider('PLANT_RIGHT', 5.15, -4.05, 0.7, 0.7),
-    collider('PLANT_FRONT', 5.1, 4.1, 0.7, 0.7),
+    // `scene-config.json` obstacles (chairs widened for their rotated footprint).
+    collider('STORY_TABLE', 0, 0.4, 2.35, 1.5),
+    collider('SOFA_LEFT', -4.5, 1.4, 1.1, 2.8),
+    collider('SOFA_RIGHT', 4.5, 1.4, 1.1, 2.8),
+    collider('CHAIR_LEFT', -3.8, -0.75, 1.0, 1.0),
+    collider('CHAIR_RIGHT', 3.8, -0.75, 1.0, 1.0),
+    // Props missing from `scene-config.json` (positions from `build_joglo_interior.py`).
+    collider('CHAIR_FRONT', 2.9, 3.15, 0.9, 0.9),
+    collider('WAYANG', -5.6, -3.4, 1.4, 0.45),
+    collider('GAMELAN', 5.35, -3.4, 2.0, 0.85),
+    collider('GEBYOK', 0, -5.0, 7.4, 0.5),
+    ...postColliders('SAKA_GURU', JOGLO_SAKA_GURU, 0.56),
+    ...postColliders('POST', JOGLO_POSTS, 0.38),
+    ...postColliders('VASE', JOGLO_VASES, 0.55),
   ],
   spawnPoints: {
-    SPAWN_ENTRY: [0, 3.3],
-    SPAWN_FROM_ENTRANCE: [-4.6, 2.6],
-    SPAWN_FROM_GARDEN: [-4.2, -3.7],
-    SPAWN_FROM_HALL: [4.2, -3.7],
+    // GLB `SPAWN_ENTRY` (bbox center); the doors sit behind the wayang/gamelan corners.
+    SPAWN_ENTRY: [0, 4.05],
+    SPAWN_FROM_ENTRANCE: [0, 4.05],
+    SPAWN_FROM_GARDEN: [-3.9, -4.0],
+    SPAWN_FROM_HALL: [3.9, -4.0],
   },
-  hotspots: {
-    HS_STORY: {
-      position: [0.1, 0.57, 0.4],
-      size: [0.6, 0.12, 0.44],
-      rotationY: 0.3,
-      material: 'red',
-    },
-    HS_GALLERY_01: {
-      position: [-5.78, 1.75, -1.2],
-      size: [1.1, 0.8, 0.06],
-      rotationY: HALF_PI,
-      material: 'photo',
-    },
-    HS_GALLERY_02: {
-      position: [5.78, 1.75, -1.8],
-      size: [1.1, 0.8, 0.06],
-      rotationY: -HALF_PI,
-      material: 'photo',
-    },
-    HS_GALLERY_03: {
-      position: [5.78, 1.75, 1.3],
-      size: [1.1, 0.8, 0.06],
-      rotationY: -HALF_PI,
-      material: 'photo',
-    },
-  },
-  portals: {
-    PORTAL_GARDEN_DOOR: {
-      position: [-4.2, 1.3, -4.88],
-      size: [1.3, 2.5, 0.16],
-      material: 'teakCarved',
-    },
-    PORTAL_HALL_DOOR: {
-      position: [4.2, 1.3, -4.88],
-      size: [1.3, 2.5, 0.16],
-      material: 'teakCarved',
-    },
-    PORTAL_BACK_TO_ENTRANCE: {
-      position: [-5.84, 1.3, 2.6],
-      size: [1.3, 2.5, 0.16],
-      rotationY: HALF_PI,
-      material: 'teakCarved',
-    },
-  },
-  camera: { offset: [0, 7.8, 7.8], lookHeight: 0.5, lookAhead: 2.2 },
+  // Frontal view under the front eave (ornament bottom ≈ y 4.45) so the gebyok and frames show.
+  camera: { offset: [0, 3.6, 7.4], lookHeight: 2.0, lookAhead: 3.2, fov: 50, maxHeight: 3.9 },
   decor: [
     { type: 'ground', material: 'grass', center: [0, -6], size: [90, 90], y: -0.02 },
     { type: 'ground', material: 'pavingDark', center: [0, 4], size: [34, 34], y: -0.012 },
-    { type: 'box', material: 'stoneDark', position: [0, -0.1, 0], size: [12.6, 0.2, 10.4] },
-    { type: 'ground', material: 'teakFloor', center: [0, 0], size: [12, 10], y: 0.002 },
-    { type: 'ground', material: 'carpet', center: [0, -0.3], size: [5.4, 3.6], y: 0.008 },
-    // Teak walls (dollhouse cut-away: back and sides only, low front sill).
-    { type: 'box', material: 'teak', position: [0, 1.7, -5.1], size: [12.4, 3.4, 0.3] },
-    { type: 'box', material: 'teak', position: [-6.05, 1.7, 0], size: [0.3, 3.4, 10.5] },
-    { type: 'box', material: 'teak', position: [6.05, 1.7, 0], size: [0.3, 3.4, 10.5] },
-    { type: 'box', material: 'teakDark', position: [0, 0.12, 5.05], size: [12.4, 0.24, 0.3] },
-    { type: 'box', material: 'teakDark', position: [0, 3.45, -5.1], size: [12.6, 0.2, 0.4] },
-    { type: 'box', material: 'teakDark', position: [-6.05, 3.45, 0], size: [0.4, 0.2, 10.7] },
-    { type: 'box', material: 'teakDark', position: [6.05, 3.45, 0], size: [0.4, 0.2, 10.7] },
-    // Door frames.
-    { type: 'box', material: 'teakDark', position: [-4.2, 2.65, -4.9], size: [1.7, 0.2, 0.24] },
-    { type: 'box', material: 'teakDark', position: [4.2, 2.65, -4.9], size: [1.7, 0.2, 0.24] },
-    { type: 'box', material: 'teakDark', position: [-5.86, 2.65, 2.6], size: [0.24, 0.2, 1.7] },
-    // Carved gebyok backdrop.
-    { type: 'gebyok', position: [0, 0, -4.85], width: 5.2, height: 3.3 },
-    // Gold frames behind the photos.
-    { type: 'box', material: 'gold', position: [-5.86, 1.75, -1.2], size: [0.04, 0.96, 1.26] },
-    { type: 'box', material: 'gold', position: [5.86, 1.75, -1.8], size: [0.04, 0.96, 1.26] },
-    { type: 'box', material: 'gold', position: [5.86, 1.75, 1.3], size: [0.04, 0.96, 1.26] },
-    // Low teak table with legs.
-    { type: 'box', material: 'teak', position: [0, 0.45, 0.4], size: [1.8, 0.12, 1.0] },
-    { type: 'box', material: 'teakDark', position: [-0.8, 0.2, 0.0], size: [0.1, 0.4, 0.1] },
-    { type: 'box', material: 'teakDark', position: [0.8, 0.2, 0.0], size: [0.1, 0.4, 0.1] },
-    { type: 'box', material: 'teakDark', position: [-0.8, 0.2, 0.8], size: [0.1, 0.4, 0.1] },
-    { type: 'box', material: 'teakDark', position: [0.8, 0.2, 0.8], size: [0.1, 0.4, 0.1] },
-    {
-      type: 'box',
-      material: 'gold',
-      position: [0.1, 0.64, 0.4],
-      size: [0.36, 0.02, 0.3],
-      rotationY: 0.3,
-    },
-    // Carved bench and two armchairs.
-    { type: 'box', material: 'cloth', position: [0, 0.42, -1.45], size: [2.6, 0.18, 0.8] },
-    { type: 'box', material: 'teakCarved', position: [0, 0.18, -1.45], size: [2.7, 0.36, 0.85] },
-    { type: 'box', material: 'teakCarved', position: [0, 0.95, -1.9], size: [2.7, 0.9, 0.14] },
-    { type: 'box', material: 'gold', position: [0, 1.44, -1.9], size: [1.2, 0.1, 0.16] },
-    { type: 'box', material: 'teakCarved', position: [-2.05, 0.22, 0.4], size: [0.85, 0.44, 0.85] },
-    { type: 'box', material: 'cloth', position: [-2.05, 0.48, 0.4], size: [0.8, 0.1, 0.8] },
-    { type: 'box', material: 'teakCarved', position: [-2.45, 0.85, 0.4], size: [0.12, 0.9, 0.85] },
-    { type: 'box', material: 'teakCarved', position: [2.05, 0.22, 0.4], size: [0.85, 0.44, 0.85] },
-    { type: 'box', material: 'cloth', position: [2.05, 0.48, 0.4], size: [0.8, 0.1, 0.8] },
-    { type: 'box', material: 'teakCarved', position: [2.45, 0.85, 0.4], size: [0.12, 0.9, 0.85] },
-    // Saka pillars in the corners.
-    { type: 'box', material: 'teakDark', position: [-5.75, 1.7, -4.8], size: [0.35, 3.4, 0.35] },
-    { type: 'box', material: 'teakDark', position: [5.75, 1.7, -4.8], size: [0.35, 3.4, 0.35] },
-    {
-      type: 'gentong',
-      positions: [
-        [-5.15, -4.05],
-        [5.15, -4.05],
-        [5.1, 4.1],
-      ],
-    },
-    { type: 'chandelier', position: [0, 2.9, 0.1], scale: 0.9 },
-    { type: 'pointLight', position: [0, 2.6, 0.4], intensity: 6, distance: 11 },
-    {
-      type: 'flowers',
-      positions: [
-        [-0.55, 0.6, 0.6],
-        [-2.7, 3.0, -4.7],
-        [2.7, 3.0, -4.7],
-      ],
-    },
     { type: 'trees', positions: SKYLINE_TREES },
   ],
 };
@@ -355,6 +296,7 @@ const GARDEN_TREES_INSIDE: Vec2[] = [
 const CANOPY_PILLARS = cornerPillars(0, -4.7, 4.2, 3.2);
 
 const weddingGarden: PrimitiveLayout = {
+  kind: 'primitive',
   floor: { minX: -7.5, maxX: 7.5, minZ: -6.5, maxZ: 6.5, material: 'paving' },
   colliders: [
     collider('AKAD_CANOPY', 0, -4.7, 4.6, 3.6),
@@ -514,6 +456,7 @@ const HALL_TABLES: Vec2[] = [
 const FRONT_PILLARS = HALL_PILLARS.filter(([, z]) => z > 5);
 
 const receptionHall: PrimitiveLayout = {
+  kind: 'primitive',
   floor: { minX: -7, maxX: 7, minZ: -6, maxZ: 5.6, material: 'stone' },
   colliders: [
     collider('STAGE', 0, -5.0, 6.0, 2.2),
@@ -628,7 +571,6 @@ const receptionHall: PrimitiveLayout = {
 /** Trusted, code-side template catalog (D-008). Unknown ids → `UNKNOWN_TEMPLATE`. */
 export const templates: Readonly<Record<string, TemplateDefinition>> = {
   blockout: {
-    kind: 'primitive',
     layouts: {
       entrance,
       'living-room': livingRoom,
@@ -638,9 +580,9 @@ export const templates: Readonly<Record<string, TemplateDefinition>> = {
   },
 };
 
-/** Layout for a scene of a primitive template, or `null` when the template cannot render it. */
-export function getPrimitiveLayout(templateId: string, sceneId: string): PrimitiveLayout | null {
+/** Layout for a scene of a catalog template, or `null` when the template cannot render it. */
+export function getSceneLayout(templateId: string, sceneId: string): SceneLayout | null {
   const template = Object.hasOwn(templates, templateId) ? templates[templateId] : undefined;
-  if (!template || template.kind !== 'primitive') return null;
+  if (!template) return null;
   return Object.hasOwn(template.layouts, sceneId) ? (template.layouts[sceneId] ?? null) : null;
 }

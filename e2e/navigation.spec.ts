@@ -82,6 +82,7 @@ test('[FR-04] HTML controls switch entrance → living room → garden → back;
 test('E2E-04 scene map navigates all four scenes incl. living room; return to entrance', async ({
   page,
 }) => {
+  test.slow(); // GLB living room is slow on SwiftShader; timeout only.
   await page.goto('/w/demo-wedding');
   const status = page.getByTestId('world-status');
   await expectScene(status, 'entrance');
@@ -98,6 +99,7 @@ test('E2E-04 scene map navigates all four scenes incl. living room; return to en
 });
 
 test('[FR-04] 10 transitions do not grow data-gl-geometries', async ({ page }) => {
+  test.slow(); // GLB living room renders ~150 ms/frame on SwiftShader; timeout only.
   await page.goto('/w/demo-wedding');
   const status = page.getByTestId('world-status');
   await expectScene(status, 'entrance');

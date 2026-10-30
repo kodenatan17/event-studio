@@ -1,0 +1,179 @@
+{
+  "schemaVersion": 1,
+  "sceneId": "living-room",
+  "asset": "/models/joglo_living_room_mobile_optimized.glb",
+  "unit": "meter",
+  "axis": "Y-up",
+  "coordinateConvention": {
+    "X": "horizontal",
+    "Y": "vertical/up",
+    "Z": "depth; front entrance is +Z"
+  },
+  "spawn": {
+    "id": "SPAWN_ENTRY",
+    "position": [
+      0,
+      0.4,
+      4.05
+    ],
+    "avatarFacingRadians": 3.141592653589793
+  },
+  "walkable": {
+    "y": 0.37,
+    "rectangleXZ": {
+      "minX": -6.4,
+      "maxX": 6.4,
+      "minZ": -4.65,
+      "maxZ": 4.65
+    }
+  },
+  "obstacles": [
+    {
+      "id": "story-table",
+      "centerXZ": [
+        0,
+        0.4
+      ],
+      "sizeXZ": [
+        2.35,
+        1.5
+      ]
+    },
+    {
+      "id": "left-sofa",
+      "centerXZ": [
+        -4.5,
+        1.4
+      ],
+      "sizeXZ": [
+        1.1,
+        2.8
+      ]
+    },
+    {
+      "id": "right-sofa",
+      "centerXZ": [
+        4.5,
+        1.4
+      ],
+      "sizeXZ": [
+        1.1,
+        2.8
+      ]
+    },
+    {
+      "id": "left-chair",
+      "centerXZ": [
+        -3.8,
+        -0.75
+      ],
+      "sizeXZ": [
+        0.9,
+        0.9
+      ]
+    },
+    {
+      "id": "right-chair",
+      "centerXZ": [
+        3.8,
+        -0.75
+      ],
+      "sizeXZ": [
+        0.9,
+        0.9
+      ]
+    }
+  ],
+  "hotspots": [
+    {
+      "id": "story-book",
+      "nodePrefix": "STORY_BOOK__HS_STORY_BOOK",
+      "action": "open_story",
+      "nearXZ": [
+        0,
+        1.55
+      ]
+    },
+    {
+      "id": "photo-frame-01",
+      "nodePrefix": "GALLERY_01__HS_GALLERY_01",
+      "action": "open_gallery",
+      "payload": {
+        "startIndex": 0
+      }
+    },
+    {
+      "id": "photo-frame-02",
+      "nodePrefix": "GALLERY_02__HS_GALLERY_01",
+      "action": "open_gallery",
+      "payload": {
+        "startIndex": 1
+      }
+    },
+    {
+      "id": "photo-frame-03",
+      "nodePrefix": "GALLERY_03__HS_GALLERY_01",
+      "action": "open_gallery",
+      "payload": {
+        "startIndex": 2
+      }
+    },
+    {
+      "id": "photo-frame-04",
+      "nodePrefix": "GALLERY_04__HS_GALLERY_01",
+      "action": "open_gallery",
+      "payload": {
+        "startIndex": 3
+      }
+    },
+    {
+      "id": "photo-frame-05",
+      "nodePrefix": "GALLERY_05__HS_GALLERY_01",
+      "action": "open_gallery",
+      "payload": {
+        "startIndex": 4
+      }
+    },
+    {
+      "id": "photo-frame-06",
+      "nodePrefix": "GALLERY_06__HS_GALLERY_01",
+      "action": "open_gallery",
+      "payload": {
+        "startIndex": 5
+      }
+    },
+    {
+      "id": "garden-door",
+      "nodePrefix": "HS_PORTAL_WEDDING_GARDEN",
+      "action": "navigate",
+      "targetSceneId": "wedding-garden"
+    },
+    {
+      "id": "hall-door",
+      "nodePrefix": "HS_PORTAL_RECEPTION_HALL",
+      "action": "navigate",
+      "targetSceneId": "reception-hall"
+    }
+  ],
+  "replacablePhotoSurfaceNodeSuffix": "PHOTO_DISPLAY_MESH",
+  "furnitureReplacementPolicy": "Do not double-place modular props on top of complete scene",
+  "camera": {
+    "position": [
+      11,
+      7.5,
+      13.8
+    ],
+    "target": [
+      0,
+      2.0,
+      0
+    ],
+    "fov": 48
+  },
+  "notes": [
+    "World engine must derive COLLIDER from external config or generate navmesh before enabling free walking.",
+    "Hide HS_ and SPAWN_ nodes before rendering; they remain in GLB for scene-action association.",
+    "Replace PHOTO_DISPLAY_MESH material with CMS-provided texture, respecting CORS."
+  ],
+  "fullEditingAsset": "/models/joglo_living_room_complete.glb"
+}

@@ -2,9 +2,8 @@ import { useFrame } from '@react-three/fiber';
 import type { ThreeEvent } from '@react-three/fiber';
 import type { SceneDefinition, WorldAction } from '@undangan/contracts/world';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { RefObject } from 'react';
 import { Vector3 } from 'three';
-import type { Group, Mesh } from 'three';
+import type { Mesh } from 'three';
 
 import { devWarn } from '../dev';
 import type { InteractiveTag } from '../interaction/registry';
@@ -16,25 +15,15 @@ import {
   spawnNodeName,
   toUpperSnake,
 } from '../interaction/registry';
-import { clampToFloor, stepToward } from '../navigation/walk';
+import { clampToFloor } from '../navigation/walk';
 import { FollowCamera } from '../renderer/FollowCamera';
 import { selectInputEnabled } from '../scene-manager/store';
 import type { WorldStore } from '../scene-manager/store';
-import { useWorldStore } from '../scene-manager/useWorldStore';
 import type { NodePlacement, PrimitiveLayout, Vec3 } from '../templates/types';
+import { Avatar, AVATAR_RADIUS, Marker } from './Avatar';
 import { Decor } from './decor/Decor';
+import { noRaycast, setCursor, TAP_SLOP_PX } from './input';
 import { extraMaterials, geometries, highlightMaterial, materials } from './materials';
-
-const AVATAR_RADIUS = 0.3;
-const WALK_SPEED = 2.6;
-/** Pointer travel (px) above which a tap counts as a drag and is ignored. */
-const TAP_SLOP_PX = 6;
-
-const noRaycast = () => {};
-
-function setCursor(cursor: string): void {
-  document.body.style.cursor = cursor;
-}
 
 interface PrimitiveSceneProps {
   store: WorldStore;
@@ -187,7 +176,7 @@ export function PrimitiveScene({
           }}
         />
       ))}
-      <Avatar store={store} layout={layout} spawn={spawn} position={avatarPosition} />
+      <Avatar store={store} colliders={layout.colliders} spawn={spawn} position={avatarPosition} />
       <Marker store={store} />
       <FollowCamera
         target={avatarPosition}
@@ -195,6 +184,8 @@ export function PrimitiveScene({
         lookHeight={layout.camera.lookHeight}
         lookAhead={layout.camera.lookAhead}
         focusCenterX={(layout.floor.minX + layout.floor.maxX) / 2}
+        fov={layout.camera.fov}
+        maxHeight={layout.camera.maxHeight}
         reducedMotion={reducedMotion}
       />
     </group>
@@ -289,86 +280,5 @@ function DoorDetails({ size: [w, h, d] }: { size: Vec3 }) {
         dispose={null}
       />
     </group>
-  );
-}
-
-/** Capsule placeholder avatar (until T-401) walking toward the marker with clamped delta. */
-function Avatar({
-  store,
-  layout,
-  spawn,
-  position,
-}: {
-  store: WorldStore;
-  layout: PrimitiveLayout;
-  spawn: readonly [number, number];
-  position: RefObject<Vector3>;
-}) {
-  const group = useRef<Group>(null);
-
-  useFrame((_, delta) => {
-    const avatar = group.current;
-    if (!avatar) return;
-    const state = store.getState();
-    const target = state.marker;
-    const current = position.current;
-    if (target && selectInputEnabled(state)) {
-      const result = stepToward(
-        [current.x, current.z],
-        target,
-        delta,
-        WALK_SPEED,
-        layout.colliders,
-        AVATAR_RADIUS,
-      );
-      const dx = result.position[0] - current.x;
-      const dz = result.position[1] - current.z;
-      const moved = Math.abs(dx) + Math.abs(dz) > 1e-6;
-      if (moved) {
-        avatar.rotation.y = Math.atan2(dx, dz);
-        current.set(result.position[0], 0, result.position[1]);
-      }
-      if (result.arrived || !moved) state.setMarker(null);
-    }
-    avatar.position.copy(current);
-  });
-
-  return (
-    <group ref={group} name="AVATAR_PLACEHOLDER" position={[spawn[0], 0, spawn[1]]}>
-      <mesh
-        geometry={geometries.capsule}
-        material={extraMaterials.avatar}
-        position={[0, 0.61, 0]}
-        dispose={null}
-      />
-      <mesh
-        geometry={geometries.sphere}
-        material={extraMaterials.skin}
-        position={[0, 1.42, 0]}
-        scale={0.36}
-        dispose={null}
-      />
-      <mesh
-        geometry={geometries.cylinder}
-        material={extraMaterials.blangkon}
-        position={[0, 1.58, 0]}
-        scale={[0.38, 0.1, 0.38]}
-        dispose={null}
-      />
-    </group>
-  );
-}
-
-function Marker({ store }: { store: WorldStore }) {
-  const marker = useWorldStore(store, (state) => state.marker);
-  if (!marker) return null;
-  return (
-    <mesh
-      geometry={geometries.marker}
-      material={extraMaterials.marker}
-      position={[marker[0], 0.045, marker[1]]}
-      raycast={noRaycast}
-      dispose={null}
-    />
   );
 }

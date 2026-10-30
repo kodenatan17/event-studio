@@ -20,7 +20,9 @@ function contentSecurityPolicy(): string {
     'script-src': ["'self'", "'unsafe-inline'", ...(isDev ? ["'unsafe-eval'"] : [])],
     'style-src': ["'self'", "'unsafe-inline'"],
     'img-src': ["'self'", 'blob:', 'data:', ...(cdn ? [cdn] : [])],
-    'connect-src': ["'self'", ...(isDev ? ['ws:'] : [])],
+    // `blob:`: GLTFLoader's ImageBitmapLoader fetches GLB-embedded textures via same-document
+    // object URLs; without it every texture of a trusted template GLB is blocked.
+    'connect-src': ["'self'", 'blob:', ...(isDev ? ['ws:'] : [])],
     'worker-src': ["'self'", 'blob:'],
     'object-src': ["'none'"],
     'base-uri': ["'self'"],

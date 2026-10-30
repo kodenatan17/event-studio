@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { getSceneLayout } from '../templates/blockout';
 import type { Collider, Rect } from './walk';
 import { clampToFloor, isBlocked, MAX_FRAME_DELTA, stepToward } from './walk';
 
@@ -51,5 +52,49 @@ describe('walk', () => {
     }
     expect(arrived).toBe(true);
     expect(position).toEqual([2, 2]);
+  });
+
+  it('[FR-04] living-room: avatar cannot enter saka guru, sofa or table colliders', () => {
+    const layout = getSceneLayout('blockout', 'living-room');
+    if (!layout) throw new Error('living-room layout missing');
+    const byId = new Map(layout.colliders.map((box) => [box.id, box]));
+    // Footprints from the GLB build (`build_joglo_interior.py`): umpak 0.56 m, sofas, story table.
+    const furniture: [string, number, number, number, number][] = [
+      ['SAKA_GURU_1', -2.3, -2.35, 0.56, 0.56],
+      ['SAKA_GURU_2', -2.3, 2.35, 0.56, 0.56],
+      ['SAKA_GURU_3', 2.3, -2.35, 0.56, 0.56],
+      ['SAKA_GURU_4', 2.3, 2.35, 0.56, 0.56],
+      ['SOFA_LEFT', -4.5, 1.4, 0.84, 2.55],
+      ['SOFA_RIGHT', 4.5, 1.4, 0.84, 2.55],
+      ['STORY_TABLE', 0, 0.4, 2.1, 1.2],
+    ];
+    const colliders: Collider[] = furniture.map(([id, cx, cz, width, depth]) => {
+      const box = byId.get(id);
+      if (!box) throw new Error(`collider ${id} missing`);
+      // The collider covers the solid furniture footprint.
+      expect(box.minX, id).toBeLessThanOrEqual(cx - width / 2);
+      expect(box.maxX, id).toBeGreaterThanOrEqual(cx + width / 2);
+      expect(box.minZ, id).toBeLessThanOrEqual(cz - depth / 2);
+      expect(box.maxZ, id).toBeGreaterThanOrEqual(cz + depth / 2);
+      return box;
+    });
+
+    const starts = Object.values(layout.spawnPoints);
+    for (const start of [...starts, [0, -3.6] as const, [-6, 0] as const, [6, 3] as const]) {
+      for (const box of colliders) {
+        const target = clampToFloor(
+          [(box.minX + box.maxX) / 2, (box.minZ + box.maxZ) / 2],
+          layout.floor,
+          RADIUS,
+        );
+        let position: [number, number] = [start[0], start[1]];
+        for (let frame = 0; frame < 450; frame += 1) {
+          position = stepToward(position, target, 1 / 30, 2.6, layout.colliders, RADIUS).position;
+          expect(isBlocked(position, [box], RADIUS), `${box.id} from ${start.join(',')}`).toBe(
+            false,
+          );
+        }
+      }
+    }
   });
 });

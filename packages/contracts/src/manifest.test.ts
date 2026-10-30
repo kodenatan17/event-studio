@@ -75,7 +75,7 @@ describe('WeddingManifestV1Schema', () => {
 
   it('[T-103] startIndex out of range rejected', () => {
     const raw = fixture();
-    raw.world.scenes[1].hotspots[3].payload.startIndex = 3;
+    raw.world.scenes[1].hotspots[3].payload.startIndex = raw.gallery.length;
 
     expect(issuePaths(raw)).toContain('world.scenes.1.hotspots.3.payload.startIndex');
   });
