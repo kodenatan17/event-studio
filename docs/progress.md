@@ -105,7 +105,7 @@ Gate A (`specs.md` §16.1, §17) requires T-001 through T-006 to pass. T-002, T-
 | Task | Title | Status | Evidence | Next action |
 |---|---|---|---|---|
 | T-601 | Implement adaptive quality, scene preloading budgets and memory-release regression test. | NOT_STARTED | — | Depends T-204, T-401. |
-| T-602 | Complete responsive/accessible 2D fallback for all non-booth core actions. | NOT_STARTED | — | Depends T-302, T-304, T-305. |
+| T-602 | Complete responsive/accessible 2D fallback for all non-booth core actions. | IN_PROGRESS (design) | Slide layout, door opening and reveal built on the owner's art (D-035, D-036, `apps/web/components/viewer/invitation/`). `[D-035]` and `[D-036]` tests in `e2e/fallback.spec.ts`; `countdown.test.ts`, `monogram.test.ts`. | RSVP and guestbook are still view-only shells. Depends T-302, T-304, T-305. |
 | T-603 | Complete RLS/security abuse tests, rate limits, logging redaction, production CSP/CORS. | NOT_STARTED | — | Depends T-307. Baseline CSP is in D-015, amended by D-024 (`connect-src 'self' blob:`). |
 | T-604 | Finish Playwright suite E2E-01..12, run real-device matrix and record evidence. | NOT_STARTED | — | Depends T-505, T-602, T-603. |
 | T-605 | Complete runbook, backups/restore drill, publishing rollback rehearsal and deployment. | NOT_STARTED | — | Depends T-604. |

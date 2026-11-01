@@ -531,3 +531,45 @@ Tests: `e2e/fallback.spec.ts`, `[T-108]` ×2 and `[D-017]` GLB 404 → ERROR pan
 
 ---
 
+## D-035 — 2D invitation redesign (slides and opening cover)
+
+**Status:** Accepted 2026-10-31 by owner instruction.
+
+**Context:** the owner asked for the 2D view to follow the layout and motion of a reference video (`wa-galeri-undangan-2d.mp4`, Galeri Undangan): an opening animation, and animation between slides.
+
+**Decision:**
+- `Fallback2D` becomes snap slides of arch panels behind an envelope cover ("Buka Undangan"). Art is project-owned inline SVG in the `jawa-sunset` palette, chosen by the owner over the video's blue (art, cover and palette superseded by D-036). The reference's art and watermark are not copied.
+- The cover shows for `manual` and `webgl_unsupported`. After `render_error` or `context_lost` it is skipped, because that guest is already inside and needs the information at once.
+- No new dependency. Motion is CSS on transform, opacity and clip-path, with `IntersectionObserver` for reveals and scroll-driven animation as a progressive enhancement. `prefers-reduced-motion` gets short fades.
+- Without scripts the content stays readable: `<noscript>` removes the cover, and reveals arm only after hydration. "Kembali ke 3D" sits above the cover.
+- Reference sections with no manifest data or outside V1 are not built: couple profiles, live streaming, wedding gift, gift confirmation, personal guest name. RSVP and guestbook stay the existing shells.
+
+**Test impact:** `[T-108] Mode 2D button…` gains a "Buka Undangan" step before its gallery click; its assertions are unchanged.
+
+**Spec impact:** the §12 2D minimum is unchanged. New unsourced copy is listed under D-029.
+
+**Owner to confirm:** the copy below, and whether the song should really start on the "Buka Undangan" tap (it is a gesture, so `Soundtrack` retries there, D-032).
+
+---
+
+## D-036 — 2D invitation uses the owner's illustrated art
+
+**Status:** Accepted 2026-11-01 by owner instruction. Amends D-035.
+
+**Context:** the owner judged the D-035 result messy and supplied layered art in `assets/source/2d-asset/`, to be placed and animated along the same reference video.
+
+**Decision:**
+- The drawn SVG art, kawung pattern, sky colors and envelope are removed. Slides now stand on the supplied landscape, dressed with its carved frame, garland, orchids, florals, oval frame and wreath. Palette tokens follow the art (wood, sage, cream, gold).
+- The cover is a pair of closed carved doors with a name card. Opening runs about 4.3 s: doors swing open, flowers enter, the names appear in the doorway, the view passes through it into the hero.
+- `undangan-bridge-room.png` is a placement reference and is not shipped, because "Bride & Groom" and a sample monogram are baked in and names must come from the manifest. The doorway is rebuilt from layers with live text, and `Monogram` uses the couple's initials.
+- The wreath ships as its top half, mirrored by CSS for the lower one, because the source's lower half has a stray white blob. The red and yellow seen at the art's edges have alpha 1–3 of 255 and do not show on the page.
+- `pnpm assets:invitation` regenerates the WebP files (`sharp`, 860 px, about 1.9 MB in total). Art loads only in 2D mode.
+- Display type is Cormorant Garamond through `next/font/google`, self-hosted at build, scoped to the invitation. It needs network access at build time.
+- On a phone on its side the flowers are hidden, because they would cover the text.
+- Every readable element stays live text, so failed art cannot block a guest (`architecture.md` §12).
+
+**Test impact:** waits for the cover to leave rise to 10 s because the opening is longer; assertions are unchanged. New `[D-036]` tests cover failed art, the 2 MB limit with no fetch from 3D, and the closing slide on a short screen.
+
+**Spec impact:** none. `CLAUDE.md` puts AI-generated images out of V1 scope as a product feature; this art is static template art supplied by the owner.
+
+**Owner to confirm:** rights in the generated art (`docs/asset-register.md`), and the pagoda in the landscape, which reads as more Chinese than Javanese.
