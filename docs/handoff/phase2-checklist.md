@@ -13,7 +13,7 @@ Design sections are cited as §N of `docs/design/controls-avatar-couple.md`.
 
 ## Rules for every chunk
 - **Skills:** load `spec-first`, `wedding-web-architecture`, `world-engine`, plus the `threejs-*` skills the chunk names. The stack is WebGL + R3F with no Drei; ignore the WebGPU/TSL sections.
-- **Don't touch:** `AGENTS.md`, `.codex/`, `.agents/`, `.claude/`, `CLAUDE.md`, `skills-lock.json`, `apps/assets/mp3/` (never commit that mp3), or the spec files. Never stage, commit or push unless the user asks.
+- **Don't touch:** `AGENTS.md`, `.codex/`, `.agents/`, `.claude/`, `CLAUDE.md`, `skills-lock.json`, `apps/web/public/audio/cundamani.mp3` (licensed release pending, D-032), or the spec files. Never stage, commit or push unless the user asks.
 - **Dependencies:** no new ones. No zod in client bundles. `world-engine` imports only `@undangan/contracts/world`. `state.input` is mutable and never goes through `set()`. Don't trigger React re-renders every frame.
 - **Disposal:** release everything you create without invalidating shared caches.
 - **Tests:**

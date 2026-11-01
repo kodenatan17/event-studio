@@ -431,6 +431,8 @@ The palette `jawa-sunset` and lighting `warm-sunset` are hard-wired in the block
 
 ## D-029 — Unsourced Indonesian copy
 
+> **Added 2026-10-31 (D-035), 2D invitation:** Buka Undangan, Kepada Bapak/Ibu/Saudara/i, Tamu Undangan, Geser ke bawah, Save the Date, Menuju hari bahagia, Wedding Event, Momen kami, Love Story, Konfirmasi kehadiran, Ucapan dan doa, Terima Kasih, Sampai jumpa, the closing sentence, and the countdown units.
+
 **Status:** Open. Owner review, 2026-10-30.
 
 **Context:** `CLAUDE.md` requires product copy in Indonesian. The spec set gives no wording for the strings below, so they were written during the build. They are not product rules.
@@ -478,3 +480,21 @@ Tests: `e2e/fallback.spec.ts`, `[T-108]` ×2 and `[D-017]` GLB 404 → ERROR pan
 **Proposed, not applied:** cap Playwright workers in CI at 2, or mark all living-room tests slow. Owner decision.
 
 **Spec impact:** none. `specs.md` §13.3 assertions are unchanged. Device FPS is tracked under T-006 in `docs/progress.md`.
+
+---
+
+## D-032 — Bundled soundtrack: "Cundamani" (accepted licensing risk)
+
+**Status:** Accepted 2026-10-31 by owner instruction.
+
+**Context:** the viewer should play a song as it loads. `apps/assets/mp3/Denny Caknan - Cundamani (Lirik Lagu).mp3` (6.8 MB) was added to the repo and copied unchanged to `apps/web/public/audio/cundamani.mp3`. It is a commercial recording; no licence was supplied.
+
+**Decision:**
+- The track ships as a static file and is referenced by the constant `DEFAULT_SOUNDTRACK_URL` (`apps/web/lib/soundtrack.ts`), never through the manifest: `HttpsUrlSchema` (`api-contracts.md` §7) is https-only and the track is not per-wedding content.
+- The owner accepts the licensing risk for this repository. Distribution to real guests requires a licensed master or a replacement track; swapping the file keeps the constant.
+- Autoplay is unchanged (architecture.md §12): the controller attempts playback on mount and, if the browser answers `NotAllowedError`, retries on the first pointerdown/keydown. `undangan.sound = off` still suppresses every attempt.
+
+**Spec impact:** `specs.md` §13.3 audio scenarios now target the static file; byte-range assertions were dropped because no route handler serves it. `docs/asset-register.md` should list the track before any release.
+
+---
+

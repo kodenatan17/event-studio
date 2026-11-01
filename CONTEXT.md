@@ -101,7 +101,7 @@ Everything is in `packages/world-engine/src/avatar/` (`parts/`, `textures`, `mat
 - **User WIP — leave untouched unless asked:**
   - `AGENTS.md`, `.codex/`, `.agents/`;
   - `.claude/skills/threejs-{interaction,lighting,loaders,textures}/`, `skills-lock.json`;
-  - `apps/assets/mp3/`. This is a third-party commercial song with no license: **never commit it or ship it** as invitation music.
+  - `apps/assets/mp3/` (moved to `apps/web/public/audio/cundamani.mp3`). This is a third-party commercial song; committing it was an explicit owner decision and accepted risk (D-032). A licensed master or replacement file is required before distribution to real guests.
 
 ## Open owner decisions
 1. Copy without a spec source (D-029 + new labels) and the cultural accuracy of the attire (blangkon styles, Solo vs Yogya bridal, siger vs paes).
