@@ -3,25 +3,31 @@ import type { Locator, Page } from '@playwright/test';
 
 import { expectScene, goViaMap } from './helpers';
 
-const AUDIO_URL = '/api/dev/demo-audio';
+const AUDIO_URL = '/audio/cundamani.mp3';
 const soundButton = (page: Page) => page.getByRole('button', { name: 'Suara', exact: true });
 const playButton = (page: Page) => page.getByRole('button', { name: 'Putar musik', exact: true });
 const audio = (page: Page) => page.getByTestId('viewer-audio');
 
 /**
- * Make the denied-autoplay path deterministic without replacing decoding/playback: only the
- * first play() rejects. Every later call uses Chromium's native HTMLMediaElement.play().
+ * Emulate the browser's autoplay rule instead of its outcome: `play()` rejects until real pointer
+ * or key input arrives, however many times the effect mounts (React StrictMode rehearses it).
+ * Playwright's Chromium reports sticky user activation, so the gate is our own gesture flag.
+ * Decoding and playback stay native.
  */
-async function denyFirstAutoplay(page: Page): Promise<void> {
+async function denyAutoplayUntilGesture(page: Page): Promise<void> {
   await page.addInitScript(() => {
+    let gestured = false;
+    const grant = () => {
+      gestured = true;
+    };
+    window.addEventListener('pointerdown', grant, { capture: true, once: true });
+    window.addEventListener('keydown', grant, { capture: true, once: true });
     const nativePlay = HTMLMediaElement.prototype.play;
-    let first = true;
     HTMLMediaElement.prototype.play = function () {
-      if (!this.src.includes('/api/dev/demo-audio')) return nativePlay.call(this);
+      if (!this.src.includes('/audio/cundamani.mp3')) return nativePlay.call(this);
       const attempts = Number(this.dataset.testPlayAttempts ?? '0') + 1;
       this.dataset.testPlayAttempts = String(attempts);
-      if (first) {
-        first = false;
+      if (!gestured) {
         return Promise.reject(new DOMException('Autoplay requires a gesture', 'NotAllowedError'));
       }
       return nativePlay.call(this);
@@ -48,25 +54,17 @@ async function expectRealPlayback(element: Locator): Promise<void> {
     .toBeGreaterThan(start + 0.2);
 }
 
-test('[FR-01] local demo music supports byte ranges and decodes in the browser', async ({
+test('[FR-01] the bundled soundtrack is served and decodes in the browser', async ({
   page,
   request,
 }) => {
-  const range = await request.get(AUDIO_URL, { headers: { Range: 'bytes=0-1023' } });
-  expect(range.status()).toBe(206);
-  expect(range.headers()['content-type']).toContain('audio/mpeg');
-  expect(range.headers()['accept-ranges']).toBe('bytes');
-  expect(range.headers()['content-range']).toMatch(/^bytes 0-1023\/\d+$/);
-  expect(range.headers()['content-length']).toBe('1024');
-  expect((await range.body()).byteLength).toBe(1024);
+  // A static file under `public/`: no route handler, so no byte-range contract to assert.
+  const response = await request.get(AUDIO_URL);
+  expect(response.status()).toBe(200);
+  expect(response.headers()['content-type']).toContain('audio/mpeg');
+  expect((await response.body()).byteLength).toBeGreaterThan(1024);
 
-  const total = Number(range.headers()['content-range']?.split('/')[1]);
-  expect(total).toBeGreaterThan(1024);
-  const invalid = await request.get(AUDIO_URL, { headers: { Range: `bytes=${total}-` } });
-  expect(invalid.status()).toBe(416);
-  expect(invalid.headers()['content-range']).toBe(`bytes */${total}`);
-
-  await denyFirstAutoplay(page);
+  await denyAutoplayUntilGesture(page);
   await page.goto('/w/demo-wedding');
   await expect(playButton(page)).toBeVisible();
   await playButton(page).click();
@@ -78,11 +76,11 @@ test('[FR-01] blocked autoplay offers a gesture retry without an unhandled error
 }) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  await denyFirstAutoplay(page);
+  await denyAutoplayUntilGesture(page);
   await page.goto('/w/demo-wedding');
 
   const element = audio(page);
-  await expect(element).toHaveAttribute('data-test-play-attempts', '1');
+  await expect(element).toHaveAttribute('data-test-play-attempts', /^[1-9]\d*$/);
   await expect(element).toHaveJSProperty('paused', true);
   await expect(playButton(page)).toBeVisible();
   await expect(page.getByTestId('soundtrack')).toHaveAttribute('data-audio-state', 'blocked');
@@ -97,7 +95,7 @@ test('[FR-01] blocked autoplay offers a gesture retry without an unhandled error
 test('[§3.4] turning demo music off persists and reload does not attempt autoplay', async ({
   page,
 }) => {
-  await denyFirstAutoplay(page);
+  await denyAutoplayUntilGesture(page);
   await page.goto('/w/demo-wedding');
   await playButton(page).click();
   await expectRealPlayback(audio(page));
@@ -119,7 +117,7 @@ test('[§3.4] turning demo music off persists and reload does not attempt autopl
 test('[FR-04] demo music keeps its element and playback position across a scene change', async ({
   page,
 }) => {
-  await denyFirstAutoplay(page);
+  await denyAutoplayUntilGesture(page);
   await page.goto('/w/demo-wedding');
   await playButton(page).click();
   const element = audio(page);

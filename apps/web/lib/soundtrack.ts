@@ -1,6 +1,12 @@
 /** Playback policy for the demo soundtrack, isolated from React and browser media for tests. */
 export type SoundtrackState = 'pending' | 'playing' | 'paused' | 'blocked' | 'error';
 
+/**
+ * Served from `apps/web/public/audio/`, not the manifest: `HttpsUrlSchema` cannot express a
+ * same-origin path, and the track is not per-wedding content (D-032).
+ */
+export const DEFAULT_SOUNDTRACK_URL = '/audio/cundamani.mp3';
+
 export interface SoundtrackMedia extends EventTarget {
   play(): Promise<void>;
   pause(): void;
@@ -88,7 +94,9 @@ export function createSoundtrackController({
         if (disposed || !desired || id !== attempt) return;
         inFlight = false;
         const blocked =
-          typeof error === 'object' && error !== null && 'name' in error &&
+          typeof error === 'object' &&
+          error !== null &&
+          'name' in error &&
           error.name === 'NotAllowedError';
         retryOnGesture = blocked;
         report(blocked ? 'blocked' : 'error');

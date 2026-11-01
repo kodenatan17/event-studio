@@ -3,10 +3,11 @@
 import type { WorldStore } from '@undangan/world-engine';
 import { useWorldStore } from '@undangan/world-engine';
 import { Button, buttonClassName } from '@undangan/ui';
-import type { MouseEvent } from 'react';
+import type { MouseEvent, RefObject } from 'react';
 
 import { INTERACTIONS_LABEL } from '@/lib/labels';
 import { writeSoundPreference } from '@/lib/sound-preference';
+import type { SoundtrackController } from '@/lib/soundtrack';
 
 interface GlobalNavProps {
   store: WorldStore;
@@ -15,6 +16,8 @@ interface GlobalNavProps {
   interactionsId: string;
   interactionsOpen: boolean;
   onToggleInteractions: () => void;
+  /** The viewer's one audio element: this bar plays/pauses it instead of toggling a bare flag. */
+  soundtrackRef: RefObject<SoundtrackController | null>;
 }
 
 /** Pressed toggles (sound, "Interaksi") read as filled. */
@@ -35,9 +38,9 @@ function ShortLabel({ short, full }: { short: string; full: string }) {
 
 /**
  * Always-available bottom bar (FR-04 map, FR-05 event info/RSVP from global UI, T-108 manual
- * 2D, T-201 sound). Sound is a stored preference only: no audio asset yet, and playback must
- * still wait for a user gesture (architecture.md §12). On phones, in either orientation, it also
- * holds the "Interaksi" toggle for the scene's hotspot controls.
+ * 2D, T-201 sound). Sound drives the viewer's single audio element, which
+ * retries on the first gesture when the browser blocks autoplay (architecture.md §12). On phones,
+ * in either orientation, it also holds the "Interaksi" toggle for the scene's hotspot controls.
  */
 export function GlobalNav({
   store,
@@ -45,6 +48,7 @@ export function GlobalNav({
   interactionsId,
   interactionsOpen,
   onToggleInteractions,
+  soundtrackRef,
 }: GlobalNavProps) {
   const soundEnabled = useWorldStore(store, (state) => state.soundEnabled);
   const api = () => store.getState();
@@ -61,6 +65,12 @@ export function GlobalNav({
 
   const toggleSound = () => {
     const next = !soundEnabled;
+    const controller = soundtrackRef.current;
+    if (controller) {
+      // The controller starts or pauses the media element and reports the real state back.
+      controller.setEnabled(next);
+      return;
+    }
     api().setSound(next);
     writeSoundPreference(next);
   };
@@ -111,7 +121,13 @@ export function GlobalNav({
       >
         <ShortLabel short="2D" full="Mode 2D" />
       </a>
-      <Button variant="ghost" className={ITEM} aria-pressed={soundEnabled} onClick={toggleSound}>
+      <Button
+        variant="ghost"
+        className={ITEM}
+        aria-pressed={soundEnabled}
+        data-sound-control="true"
+        onClick={toggleSound}
+      >
         Suara
       </Button>
     </nav>

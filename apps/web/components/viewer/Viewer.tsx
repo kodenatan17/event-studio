@@ -14,6 +14,8 @@ import { isActionEnabled } from '@/lib/action-enabled';
 import { readAvatarPreference } from '@/lib/avatar-preference';
 import { sceneLabel } from '@/lib/labels';
 import { readSoundPreference } from '@/lib/sound-preference';
+import { DEFAULT_SOUNDTRACK_URL } from '@/lib/soundtrack';
+import type { SoundtrackController } from '@/lib/soundtrack';
 
 import { AvatarEditor } from './AvatarEditor';
 import { Fallback2D } from './Fallback2D';
@@ -21,6 +23,7 @@ import { GlobalNav } from './GlobalNav';
 import { KeyboardHint } from './KeyboardHint';
 import { QuickMapDialog } from './QuickMapDialog';
 import { SceneActions } from './SceneActions';
+import { Soundtrack } from './Soundtrack';
 import { TouchControls } from './TouchControls';
 import { useOverlayHistory } from './use-overlay-history';
 import { WorldStatus } from './WorldStatus';
@@ -94,6 +97,8 @@ export function Viewer({ manifest, initialMode = '3d', children }: ViewerProps) 
   const fallbackReason = useWorldStore(store, (state) => state.fallbackReason);
   /** Focus target when an overlay closes and its opener is gone (e.g. opened by a 3D tap). */
   const worldRef = useRef<HTMLDivElement>(null);
+  /** One audio element for the whole viewer; the bottom bar's sound toggle drives it. */
+  const soundtrackRef = useRef<SoundtrackController | null>(null);
   const interactionsId = useId();
   // Mobile "Interaksi" panel, open for one scene: it closes by itself once the scene changes.
   const [interactionsFor, setInteractionsFor] = useState<string | null>(null);
@@ -276,11 +281,15 @@ export function Viewer({ manifest, initialMode = '3d', children }: ViewerProps) 
                 interactionsId={interactionsId}
                 interactionsOpen={interactionsOpen}
                 onToggleInteractions={toggleInteractions}
+                soundtrackRef={soundtrackRef}
               />
             </div>
           </>
         )}
       </div>
+
+      {/* Outside the inert world layer: playback retries from the first gesture even in 2D. */}
+      <Soundtrack url={DEFAULT_SOUNDTRACK_URL} store={store} controllerRef={soundtrackRef} />
 
       <WorldStatus store={store} message={message} />
 

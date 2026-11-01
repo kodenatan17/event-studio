@@ -50,8 +50,9 @@ export function Soundtrack({ url, store, controllerRef }: SoundtrackProps) {
 
   return (
     <div data-testid="soundtrack" data-audio-state={state}>
-      <audio ref={audio} data-testid="viewer-audio" loop preload="auto" />
-      {state === 'blocked' || state === 'error' ? (
+      <audio ref={audio} data-testid="viewer-audio" loop preload="metadata" />
+      {/* In 2D the opening tap is the retry gesture, and "Suara" below stays available. */}
+      {(state === 'blocked' && !is2D) || state === 'error' ? (
         <div className="pointer-events-none absolute inset-x-0 top-1/2 z-10 flex justify-center">
           <Button
             data-sound-control="true"
