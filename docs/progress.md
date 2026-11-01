@@ -85,7 +85,7 @@ Gate A (`specs.md` §16.1, §17) requires T-001 through T-006 to pass. T-002, T-
 | Task | Title | Status | Evidence | Next action |
 |---|---|---|---|---|
 | T-401 | Integrate guest avatar presets, selection persistence, idle/walk pose mapping. | NOT_STARTED | — | Depends T-204 and artist assets. When started, mark `ENGINEERING_DONE / ART_PENDING` until assets are licensed. |
-| T-402 | Hook avatar movement to navmesh/waypoints and camera follow; profile mobile. | NOT_STARTED | — | Depends T-401. |
+| T-402 | Hook avatar movement to navmesh/waypoints and camera follow; profile mobile. | IN_PROGRESS | Camera follow exists (`FollowCamera.tsx`). Guest zoom added: store `cameraZoom` default 1 clamped 0.55–1.6, applied to follow distance; short-viewport framing tightened (distance ×0.75, lift ×0.7 at ≤400 px, linear ramp to 620 px), portrait unchanged; persisted in `localStorage` `undangan.camera-zoom`; "Kamera" Sheet in the bottom bar (D-033). Evidence: `vitest run src/renderer/framing.test.ts src/scene-manager/store.test.ts` 28 passed; E2E-12 landscape passed, mobile passed only with the Next dev toolbar hidden (dev-server run; production build blocked by pre-existing decor type errors). | Avatar navmesh/waypoint hookup still outstanding. Depends T-401. |
 | T-403 | Integrate couple avatars, three pose presets and booth environment. | NOT_STARTED | — | Depends T-301 and artist assets. |
 | T-404 | Implement offscreen capture, PNG frame/name composition, local download/share, recoverable errors. | NOT_STARTED | — | Depends T-403, T-107 (public asset CORS). |
 | T-405 | Write booth E2E/manual QA including no webcam access and context-loss recovery. | NOT_STARTED | — | Depends T-404. |

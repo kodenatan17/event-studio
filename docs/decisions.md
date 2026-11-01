@@ -498,3 +498,36 @@ Tests: `e2e/fallback.spec.ts`, `[T-108]` ×2 and `[D-017]` GLB 404 → ERROR pan
 
 ---
 
+## D-033 — Guest camera zoom instead of a free camera
+
+**Status:** Accepted 2026-10-31 by owner instruction.
+
+**Context:** on wide-but-short viewports (a phone on its side, a short browser window) the authored rig (`CameraRig.offset`, e.g. `[0, 8.4, 10]`) framed the room small and high, and guests had no way to adjust it.
+
+**Decision:**
+- `framingFor` (`packages/world-engine/src/renderer/FollowCamera.tsx`) now tightens landscape framing below 620 px of viewport height: distance ×0.75 and lift ×0.7 at the floor of the range. The portrait branch is unchanged.
+- The store gains `cameraZoom` (default 1, clamped 0.55–1.6) applied to the follow distance; the arrival ease and lerp are untouched.
+- The control is the "Kamera" button in the bottom bar, opening a `Sheet` with Perbesar/Perkecil/Atur ulang. It is an engine-level overlay (`{ type: 'camera_controls' }`) like the quick map, so the world behind is inert and browser back closes it.
+- The value persists in `localStorage` under `undangan.camera-zoom` (non-personal, like the mute preference).
+- Deliberately not built: free orbit, pitch, per-wedding CMS framing.
+
+**Spec impact:** `architecture.md` §3.4/§8.1 and the §8.2 state list should name the camera overlay and zoom field.
+
+---
+
+## D-034 — Pendopo interior camera and direct zoom gestures
+
+**Status:** Accepted 2026-10-31 by owner instruction. Amends D-033.
+
+**Context:** in `reception-hall` the rig `offset [0, 4, 13]` had no `maxHeight`, and portrait framing multiplied its height to about 9 m, above the 4.0 m eave. The avatar kept walking (probed z 4.40 → -2.80) but disappeared behind the roof, so guests saw it as frozen. "Perbesar" made it worse, and zoom existed only behind the "Kamera" sheet.
+
+**Decision:**
+- The hall uses an interior rig like the living room: `offset [0, 3, 9.5]`, `lookHeight 1.5`, `lookAhead 3`, `fov 50`, `maxHeight 3.4`. `blockout.test.ts` keeps the camera under the eave across four viewports and the whole zoom range.
+- Wheel, trackpad pinch and two-finger pinch on the canvas drive the same `cameraZoom` (`renderer/useCameraZoomGestures.ts`). A short `input.tapGuard` stops the end of a pinch from walking the avatar.
+- `Viewer` is the single, debounced writer of `undangan.camera-zoom`.
+- Free orbit stays out: the owner re-confirmed this on 2026-10-31.
+
+**Spec impact:** additive to FR-04; `architecture.md` §8.1 still holds (3/4 elevated follow view).
+
+---
+
