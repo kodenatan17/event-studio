@@ -8,6 +8,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 import { devWarn } from '../dev';
+import { tapSuppressed } from '../input/bus';
 import { tagKey } from '../interaction/nearby';
 import type { Interactable } from '../interaction/nearby';
 import type { InteractiveTag } from '../interaction/registry';
@@ -292,6 +293,7 @@ function LoadedGltfScene({
       event.stopPropagation();
       const state = store.getState();
       if (event.delta > TAP_SLOP_PX || !selectInputEnabled(state)) return;
+      if (tapSuppressed(state.input, performance.now())) return;
       const tag = pickInteractive(event.intersections);
       if (tag) {
         for (const node of nodes.values()) {

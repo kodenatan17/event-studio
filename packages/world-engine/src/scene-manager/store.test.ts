@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { createWorldStore, selectInputEnabled, selectTransitionStatus } from './store';
+import {
+  createWorldStore,
+  MAX_CAMERA_ZOOM,
+  MIN_CAMERA_ZOOM,
+  selectInputEnabled,
+  selectTransitionStatus,
+} from './store';
 
 const SCENES = ['entrance', 'living-room', 'wedding-garden', 'reception-hall'];
 
@@ -392,6 +398,20 @@ describe('createWorldStore', () => {
     store.getState().setSound(true);
     expect(store.getState().soundEnabled).toBe(true);
   });
+
+  it('[D-033] camera zoom clamps to its range and resets to the authored framing', () => {
+    const store = createWorldStore({ sceneIds: ['a'], entrySceneId: 'a' });
+    expect(store.getState().cameraZoom).toBe(1);
+    store.getState().setCameraZoom(9);
+    expect(store.getState().cameraZoom).toBe(MAX_CAMERA_ZOOM);
+    store.getState().setCameraZoom(0);
+    expect(store.getState().cameraZoom).toBe(MIN_CAMERA_ZOOM);
+    store.getState().setCameraZoom(Number.NaN);
+    expect(store.getState().cameraZoom).toBe(MIN_CAMERA_ZOOM);
+    store.getState().resetCameraZoom();
+    expect(store.getState().cameraZoom).toBe(1);
+  });
+
   it('[§3.3] figures report in and out of the scene', () => {
     const store = createWorldStore({ sceneIds: ['a'], entrySceneId: 'a' });
     const { addFigure, removeFigure } = store.getState();

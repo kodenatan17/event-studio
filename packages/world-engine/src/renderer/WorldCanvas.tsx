@@ -22,6 +22,7 @@ import {
   usePrefersReducedMotion,
 } from './capabilities';
 import type { RenderTier } from './capabilities';
+import { useCameraZoomGestures } from './useCameraZoomGestures';
 
 export interface WorldCanvasProps {
   store: WorldStore;
@@ -92,6 +93,7 @@ function ReadySignal({ store, requestId }: { store: WorldStore; requestId: numbe
 function RendererProbes({ store }: { store: WorldStore }) {
   const gl = useThree((state) => state.gl);
   const elapsed = useRef(0);
+  useCameraZoomGestures(gl.domElement, store);
 
   useEffect(() => {
     const canvas = gl.domElement;

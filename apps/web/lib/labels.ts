@@ -39,7 +39,15 @@ const OVERLAY_LABELS: Readonly<Record<ActiveOverlay['type'], string>> = {
   open_photo_booth: 'Photo booth',
   quick_map: 'Peta',
   avatar_editor: 'Ubah Avatar',
+  camera_controls: 'Kamera',
 };
+
+/** Camera sheet copy (D-033): zoom only, no free orbit. */
+export const CAMERA_LABEL = 'Kamera';
+export const CAMERA_ZOOM_IN_LABEL = 'Perbesar';
+export const CAMERA_ZOOM_OUT_LABEL = 'Perkecil';
+export const CAMERA_RESET_LABEL = 'Atur ulang';
+export const CAMERA_CLOSE_LABEL = 'Tutup';
 
 /** Avatar action buttons (FR-04): "Buka" interacts with the hotspot in reach. */
 const AVATAR_ACTION_LABELS: Readonly<Record<InputAction, string>> = {

@@ -15,6 +15,8 @@ export interface InputBus {
   readonly actions: InputAction[];
   /** Avatar-editor preview: extra yaw (rad) and panel insets as viewport fractions. */
   readonly preview: { yaw: number; insetRight: number; insetBottom: number };
+  /** Taps count as walks again after `until` (ms): the click that ends a pinch is not a walk. */
+  readonly tapGuard: { until: number };
   /** Drops held keys, the stick, queued actions and the preview (transition, overlay, 2D). */
   reset(): void;
 }
@@ -28,6 +30,7 @@ export function createInputBus(): InputBus {
     joystick: { x: 0, y: 0 },
     actions: [],
     preview: { yaw: 0, insetRight: 0, insetBottom: 0 },
+    tapGuard: { until: 0 },
     reset() {
       bus.keys.clear();
       bus.joystick.x = 0;
@@ -36,6 +39,7 @@ export function createInputBus(): InputBus {
       bus.preview.yaw = 0;
       bus.preview.insetRight = 0;
       bus.preview.insetBottom = 0;
+      bus.tapGuard.until = 0;
     },
   };
   return bus;
@@ -44,4 +48,9 @@ export function createInputBus(): InputBus {
 /** Same queue for keys and buttons (E / "Buka", Space / "Lompat", Q / "Sapa"). */
 export function queueAction(bus: InputBus, action: InputAction): void {
   if (bus.actions.length < MAX_QUEUED_ACTIONS) bus.actions.push(action);
+}
+
+/** Whether a tap right now belongs to a camera gesture rather than the world. */
+export function tapSuppressed(bus: InputBus, now: number): boolean {
+  return now < bus.tapGuard.until;
 }

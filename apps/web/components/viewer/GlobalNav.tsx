@@ -5,7 +5,7 @@ import { useWorldStore } from '@undangan/world-engine';
 import { Button, buttonClassName } from '@undangan/ui';
 import type { MouseEvent, RefObject } from 'react';
 
-import { INTERACTIONS_LABEL } from '@/lib/labels';
+import { CAMERA_LABEL, INTERACTIONS_LABEL } from '@/lib/labels';
 import { writeSoundPreference } from '@/lib/sound-preference';
 import type { SoundtrackController } from '@/lib/soundtrack';
 
@@ -38,7 +38,7 @@ function ShortLabel({ short, full }: { short: string; full: string }) {
 
 /**
  * Always-available bottom bar (FR-04 map, FR-05 event info/RSVP from global UI, T-108 manual
- * 2D, T-201 sound). Sound drives the viewer's single audio element, which
+ * 2D, T-201 sound, D-033 camera zoom). Sound drives the viewer's single audio element, which
  * retries on the first gesture when the browser blocks autoplay (architecture.md §12). On phones,
  * in either orientation, it also holds the "Interaksi" toggle for the scene's hotspot controls.
  */
@@ -95,6 +95,13 @@ export function GlobalNav({
         onClick={() => api().openOverlay({ type: 'quick_map' })}
       >
         Peta
+      </Button>
+      <Button
+        variant="ghost"
+        className={ITEM}
+        onClick={() => api().openOverlay({ type: 'camera_controls' })}
+      >
+        {CAMERA_LABEL}
       </Button>
       <Button
         variant="ghost"

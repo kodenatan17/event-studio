@@ -27,11 +27,11 @@ async function expectMobileLayout(page: Page) {
   });
   expect(horizontal).toEqual({ x: 0, overflow: 0 });
 
-  // "Interaksi", four buttons and the "Mode 2D" link (works without JS).
+  // "Interaksi" plus Peta, Kamera, Info Acara, RSVP, the "Mode 2D" link and Suara.
   const buttons = page
     .getByRole('navigation', { name: 'Navigasi undangan' })
     .locator('button, a[href]');
-  await expect(buttons).toHaveCount(6);
+  await expect(buttons).toHaveCount(7);
   const boxes: Box[] = [];
   for (const button of await buttons.all()) {
     const box = await button.boundingBox();

@@ -30,6 +30,31 @@ const MOBILE_ONLY = 'touch controls: mobile project';
 const FRAME_BOUND = 'avatar motion is frame-rate bound on SwiftShader; timeout only';
 
 test.describe('desktop keyboard controls', () => {
+  test('[D-034] the wheel zooms the Pendopo camera and the choice survives a reload', async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', DESKTOP_ONLY);
+    await page.goto('/w/demo-wedding');
+    const status = page.getByTestId('world-status');
+    await expectScene(status, 'entrance');
+    await goViaMap(page, 'Pendopo Resepsi');
+    await expectScene(status, 'reception-hall');
+    await expect(status).toHaveAttribute('data-camera-zoom', '1.00');
+
+    await page.mouse.move(640, 240);
+    await page.mouse.wheel(0, -200);
+    await expect
+      .poll(async () => Number(await status.getAttribute('data-camera-zoom')))
+      .toBeLessThan(1);
+    const zoom = await status.getAttribute('data-camera-zoom');
+
+    await expect
+      .poll(() => page.evaluate(() => window.localStorage.getItem('undangan.camera-zoom')))
+      .not.toBeNull();
+    await page.reload();
+    await expect(status).toHaveAttribute('data-camera-zoom', zoom ?? '');
+  });
+
   test('[FR-04] W/D keys move avatar camera-relative', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop', DESKTOP_ONLY);
     test.slow(true, FRAME_BOUND);

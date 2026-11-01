@@ -12,12 +12,14 @@ import type { ReactNode } from 'react';
 
 import { isActionEnabled } from '@/lib/action-enabled';
 import { readAvatarPreference } from '@/lib/avatar-preference';
+import { readCameraZoomPreference, writeCameraZoomPreference } from '@/lib/camera-zoom-preference';
 import { sceneLabel } from '@/lib/labels';
 import { readSoundPreference } from '@/lib/sound-preference';
 import { DEFAULT_SOUNDTRACK_URL } from '@/lib/soundtrack';
 import type { SoundtrackController } from '@/lib/soundtrack';
 
 import { AvatarEditor } from './AvatarEditor';
+import { CameraControls } from './CameraControls';
 import { Fallback2D } from './Fallback2D';
 import { GlobalNav } from './GlobalNav';
 import { KeyboardHint } from './KeyboardHint';
@@ -40,6 +42,8 @@ interface ViewerProps {
   /** Rendered above the couple names (e.g. the dev-fixture banner). */
   children?: ReactNode;
 }
+
+const ZOOM_SAVE_DELAY_MS = 300;
 
 function statusText(status: WorldStatusValue, sceneId: string | null): string {
   const label = sceneId ? sceneLabel(sceneId) : 'dunia undangan';
@@ -115,12 +119,27 @@ export function Viewer({ manifest, initialMode = '3d', children }: ViewerProps) 
   useEffect(() => {
     const api = store.getState();
     if (readSoundPreference()) api.setSound(true);
+    api.setCameraZoom(readCameraZoomPreference());
     // Before the first scene builds, so a saved look never flashes the default.
     const savedAvatar = readAvatarPreference();
     if (savedAvatar) api.setAvatarAppearance(savedAvatar);
     // A manual 2D start becomes `webgl_unsupported` here, which hides "Kembali ke 3D".
     if (detectWebGL()) api.start();
     else api.enterFallback('webgl_unsupported');
+  }, [store]);
+
+  // One write path for the buttons and for wheel/pinch, which fire many times per second.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const unsubscribe = store.subscribe((state, previous) => {
+      if (state.cameraZoom === previous.cameraZoom) return;
+      clearTimeout(timer);
+      timer = setTimeout(() => writeCameraZoomPreference(state.cameraZoom), ZOOM_SAVE_DELAY_MS);
+    });
+    return () => {
+      clearTimeout(timer);
+      unsubscribe();
+    };
   }, [store]);
 
   const closeOverlay = useCallback(() => store.getState().closeOverlay(), [store]);
@@ -302,6 +321,8 @@ export function Viewer({ manifest, initialMode = '3d', children }: ViewerProps) 
         />
       ) : activeOverlay?.type === 'avatar_editor' ? (
         <AvatarEditor store={store} onClose={closeOverlay} fallbackFocus={worldRef} />
+      ) : activeOverlay?.type === 'camera_controls' ? (
+        <CameraControls store={store} onClose={closeOverlay} fallbackFocus={worldRef} />
       ) : activeOverlay ? (
         <OverlayHost
           key={activeOverlay.type}

@@ -33,6 +33,12 @@ const CENTER_PULL_PER_PORTRAIT = 1.7;
 const MAX_CENTER_PULL = 0.9;
 /** The camera never leans further than this (m) from the avatar, so it stays in frame. */
 const MAX_LEAN = 4.5;
+/** Landscape viewports shorter than this (px) are framed tighter: a phone on its side. */
+const SHORT_VIEWPORT = 620;
+const SHORT_RANGE = 220;
+/** Full-short-viewport pull-in and flattening (fractions of the authored rig). */
+const SHORT_PULL = 0.25;
+const SHORT_FLATTEN = 0.3;
 
 interface Framing {
   fov: number;
@@ -47,10 +53,20 @@ interface Framing {
 /**
  * Portrait phones widen the view, pull back, look down more steeply and lean sideways toward
  * the room center, so a narrow screen shows the room's key props instead of empty floor around an
- * avatar standing near a wall. Landscape keeps the plain follow view.
+ * avatar standing near a wall. Landscape keeps the plain follow view, except on a short viewport
+ * (a phone on its side, a short browser window): the authored rig then leaves the room tiny and
+ * the camera high, so it pulls in and flattens.
  */
-function framingFor(aspect: number, baseFov: number): Framing {
-  if (aspect >= 1) return { fov: baseFov, distance: 1, lift: 1, centerPull: 0 };
+export function framingFor(aspect: number, height: number, baseFov: number): Framing {
+  if (aspect >= 1) {
+    const short = Math.min(1, Math.max(0, (SHORT_VIEWPORT - height) / SHORT_RANGE));
+    return {
+      fov: baseFov,
+      distance: 1 - SHORT_PULL * short,
+      lift: 1 - SHORT_FLATTEN * short,
+      centerPull: 0,
+    };
+  }
   const portrait = 1 - aspect;
   const halfFov = (baseFov * Math.PI) / 360;
   const fov = (2 * Math.atan(Math.tan(halfFov) / Math.pow(aspect, 0.75)) * 180) / Math.PI;
@@ -116,10 +132,12 @@ export function FollowCamera({
   const inset = useRef({ right: 0, bottom: 0 });
 
   useFrame(({ camera, size }, delta) => {
-    const { fov, distance, lift, centerPull } = framingFor(
-      size.width / Math.max(size.height, 1),
-      baseFov,
-    );
+    const state = store.getState();
+    const framing = framingFor(size.width / Math.max(size.height, 1), size.height, baseFov);
+    const { fov } = framing;
+    // Guest zoom is the authored distance scaled by `cameraZoom` (already clamped by the store).
+    const distance = framing.distance * state.cameraZoom;
+    const { lift, centerPull } = framing;
     if (camera instanceof PerspectiveCamera && Math.abs(camera.fov - fov) > 0.01) {
       camera.fov = fov;
       camera.updateProjectionMatrix();
@@ -136,7 +154,6 @@ export function FollowCamera({
     );
     lookTarget.current.set(focusX, avatar.y + lookHeight, avatar.z - lookAhead);
 
-    const state = store.getState();
     const previewing = state.activeOverlay?.type === 'avatar_editor';
     const { preview } = state.input;
     if (previewing) {

@@ -499,7 +499,8 @@ const receptionHall: PrimitiveLayout = {
       material: 'teakCarved',
     },
   },
-  camera: { offset: [0, 4.0, 13], lookHeight: 3.3, lookAhead: 2 },
+  // Under the front eave (y 4.0) at every viewport and zoom, or the roof hides the avatar inside.
+  camera: { offset: [0, 3.0, 9.5], lookHeight: 1.5, lookAhead: 3, fov: 50, maxHeight: 3.4 },
   decor: [
     { type: 'ground', material: 'grass', center: [0, -6], size: [90, 90], y: -0.02 },
     { type: 'ground', material: 'pavingDark', center: [0, 4], size: [34, 34], y: -0.012 },

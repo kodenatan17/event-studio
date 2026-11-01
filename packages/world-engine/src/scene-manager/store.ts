@@ -21,10 +21,11 @@ export type WorldStatus =
   | 'FALLBACK_2D';
 
 /**
- * `quick_map` and `avatar_editor` are engine-level UI overlays; everything else comes from a
- * `WorldAction` (architecture.md §8.3).
+ * `quick_map`, `avatar_editor` and `camera_controls` are engine-level UI overlays; everything
+ * else comes from a `WorldAction` (architecture.md §8.3).
  */
-export type ActiveOverlay = OverlayAction | { type: 'quick_map' } | { type: 'avatar_editor' };
+export type ActiveOverlay =
+  OverlayAction | { type: 'quick_map' } | { type: 'avatar_editor' } | { type: 'camera_controls' };
 
 export type QualityProfile = 'auto' | 'high' | 'low';
 
@@ -43,6 +44,13 @@ export type PostFx = 'bloom' | 'off';
 /** Avatar position probe grid (m). */
 const PROBE_STEP = 0.05;
 
+/**
+ * Guest camera pull-in/out factor: 1 is the authored framing. Kept inside a range that still
+ * frames the avatar, since the follow rig has no free orbit (D-033).
+ */
+export const MIN_CAMERA_ZOOM = 0.55;
+export const MAX_CAMERA_ZOOM = 1.6;
+
 export interface WorldStateData {
   status: WorldStatus;
   currentSceneId: string | null;
@@ -55,6 +63,8 @@ export interface WorldStateData {
   avatarAppearance: AvatarAppearance;
   qualityProfile: QualityProfile;
   soundEnabled: boolean;
+  /** Multiplier on the follow camera's distance; 1 is the authored framing. */
+  cameraZoom: number;
   marker: FloorPoint | null;
   error: { code: string } | null;
   fallbackReason: FallbackReason | null;
@@ -97,6 +107,9 @@ export interface WorldActions {
   setAvatarAppearance(appearance: AvatarAppearance): void;
   setQuality(quality: QualityProfile): void;
   setSound(enabled: boolean): void;
+  /** Clamped to `MIN_CAMERA_ZOOM`..`MAX_CAMERA_ZOOM`; a non-finite value changes nothing. */
+  setCameraZoom(zoom: number): void;
+  resetCameraZoom(): void;
   setMarker(marker: FloorPoint | null): void;
   setGlGeometries(count: number): void;
   setCharacterKey(key: string | null): void;
@@ -185,6 +198,7 @@ export function createWorldStore({
       avatarAppearance: defaultAppearance(),
       qualityProfile: 'auto',
       soundEnabled: false,
+      cameraZoom: 1,
       marker: null,
       error: null,
       fallbackReason: initialFallbackReason ?? null,
@@ -333,6 +347,16 @@ export function createWorldStore({
 
       setSound(soundEnabled) {
         set({ soundEnabled });
+      },
+
+      setCameraZoom(zoom) {
+        if (!Number.isFinite(zoom)) return;
+        const cameraZoom = Math.min(MAX_CAMERA_ZOOM, Math.max(MIN_CAMERA_ZOOM, zoom));
+        if (get().cameraZoom !== cameraZoom) set({ cameraZoom });
+      },
+
+      resetCameraZoom() {
+        if (get().cameraZoom !== 1) set({ cameraZoom: 1 });
       },
 
       setMarker(marker) {

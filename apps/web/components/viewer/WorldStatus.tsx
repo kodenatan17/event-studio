@@ -20,6 +20,7 @@ export function WorldStatus({ store, message }: WorldStatusProps) {
   const glGeometries = useWorldStore(store, (state) => state.glGeometries);
   const probe = useWorldStore(store, (state) => state.avatarProbe);
   const nearby = useWorldStore(store, (state) => state.nearby);
+  const cameraZoom = useWorldStore(store, (state) => state.cameraZoom);
   const postFx = useWorldStore(store, (state) => state.postFx);
   const avatar = useWorldStore(store, (state) => appearanceKey(state.avatarAppearance));
   const avatarBuilt = useWorldStore(store, (state) => state.characterKey);
@@ -41,6 +42,7 @@ export function WorldStatus({ store, message }: WorldStatusProps) {
       data-avatar-x={probe ? probe[0].toFixed(2) : ''}
       data-avatar-z={probe ? probe[1].toFixed(2) : ''}
       data-nearby={nearby?.id ?? ''}
+      data-camera-zoom={cameraZoom.toFixed(2)}
       data-postfx={postFx}
       data-avatar={avatar}
       data-avatar-built={avatarBuilt ?? ''}

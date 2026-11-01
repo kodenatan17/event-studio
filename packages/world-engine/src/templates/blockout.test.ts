@@ -5,6 +5,8 @@ import { describe, expect, it } from 'vitest';
 import { distanceToFootprint, footprintAabb, INTERACT_RADIUS } from '../interaction/nearby';
 import { portalNodeName, spawnNodeName } from '../interaction/registry';
 import { clampToFloor, isBlocked } from '../navigation/walk';
+import { framingFor } from '../renderer/FollowCamera';
+import { MAX_CAMERA_ZOOM, MIN_CAMERA_ZOOM } from '../scene-manager/store';
 import { getSceneLayout } from './blockout';
 import type { SceneLayout } from './types';
 
@@ -53,6 +55,28 @@ describe('blockout template', () => {
         expect(isBlocked(point, layout.colliders, AVATAR_RADIUS), `${scene.id} ${name}`).toBe(
           false,
         );
+      }
+    }
+  });
+
+  it('[FR-04] the hall camera stays under the roof eave at every viewport and zoom', () => {
+    const layout = getSceneLayout(templateId, 'reception-hall');
+    if (layout?.kind !== 'primitive') throw new Error('reception-hall must be primitive');
+    const roof = layout.decor.find((item) => item.type === 'joglo');
+    if (roof?.type !== 'joglo') throw new Error('reception-hall must have its joglo roof');
+    const { offset, fov, maxHeight = Infinity } = layout.camera;
+
+    const viewports = [
+      [322, 690],
+      [393, 742],
+      [844, 390],
+      [1280, 800],
+    ] as const;
+    for (const [width, height] of viewports) {
+      const framing = framingFor(width / height, height, fov ?? 45);
+      for (const zoom of [MIN_CAMERA_ZOOM, 1, MAX_CAMERA_ZOOM]) {
+        const cameraY = Math.min(offset[1] * framing.distance * zoom * framing.lift, maxHeight);
+        expect(cameraY, `${width}x${height} zoom ${zoom}`).toBeLessThan(roof.eaveHeight);
       }
     }
   });

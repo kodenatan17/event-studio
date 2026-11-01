@@ -2,6 +2,8 @@
 // The renderer lives at `@undangan/world-engine/canvas` (loaded with `ssr: false`).
 export {
   createWorldStore,
+  MAX_CAMERA_ZOOM,
+  MIN_CAMERA_ZOOM,
   selectInputEnabled,
   selectTransitionStatus,
 } from './scene-manager/store';

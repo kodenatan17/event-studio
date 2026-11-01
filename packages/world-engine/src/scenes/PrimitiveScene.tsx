@@ -6,6 +6,7 @@ import { Vector3 } from 'three';
 import type { Mesh } from 'three';
 
 import { devWarn } from '../dev';
+import { tapSuppressed } from '../input/bus';
 import { footprintAabb, tagKey } from '../interaction/nearby';
 import type { Interactable } from '../interaction/nearby';
 import type { InteractiveTag } from '../interaction/registry';
@@ -129,6 +130,7 @@ export function PrimitiveScene({
       event.stopPropagation();
       const state = store.getState();
       if (event.delta > TAP_SLOP_PX || !selectInputEnabled(state)) return;
+      if (tapSuppressed(state.input, performance.now())) return;
       const tag = pickInteractive(event.intersections);
       const node = tag && nodes.find((n) => n.tag.kind === tag.kind && n.tag.id === tag.id);
       if (node) state.dispatch(node.action);
@@ -140,6 +142,7 @@ export function PrimitiveScene({
     (event: ThreeEvent<MouseEvent>) => {
       const state = store.getState();
       if (event.delta > TAP_SLOP_PX || !selectInputEnabled(state)) return;
+      if (tapSuppressed(state.input, performance.now())) return;
       event.stopPropagation();
       state.setMarker(clampToFloor([event.point.x, event.point.z], layout.floor, AVATAR_RADIUS));
     },
