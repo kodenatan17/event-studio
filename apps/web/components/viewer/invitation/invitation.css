@@ -1,0 +1,973 @@
+/* 2D invitation (D-035, D-036). Motion uses transform, opacity and clip-path only. */
+
+.inv-stage {
+  --inv-paper: #fbf6ec;
+  --inv-cream: #f5ecdf;
+  --inv-sand: #e3d3bd;
+  --inv-wood: #a58468;
+  --inv-ink: #4a3324;
+  --inv-kicker: #6b4c36;
+  --inv-gold: #b8935a;
+  --inv-gold-soft: #dcc59b;
+  --inv-veil: rgb(251 246 236 / 52%);
+  --inv-display: var(--inv-font), var(--font-serif);
+  --inv-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  color: #2b2118;
+  background: var(--inv-cream);
+}
+
+.inv-stage img {
+  max-width: none;
+}
+
+.inv-body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.inv-backdrop {
+  display: none;
+}
+
+/* Phone-sized column; on a wide screen it stands centered over the landscape. */
+.inv-column {
+  position: relative;
+  height: 100%;
+  max-width: 430px;
+  margin-inline: auto;
+  overflow: hidden;
+  timeline-scope: --inv-scroll;
+  background: var(--inv-cream);
+}
+
+.inv-scene,
+.inv-cover-world {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--inv-cream);
+}
+
+.inv-scene img,
+.inv-cover-landscape {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 100%;
+}
+
+.inv-cover-landscape {
+  opacity: 0.55;
+}
+
+.inv-scene img {
+  height: 112%;
+}
+
+.inv-scene::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--inv-veil);
+}
+
+/* ---- Shared type and art ---- */
+
+.inv-kicker {
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--inv-kicker);
+}
+
+.inv-title {
+  font-family: var(--inv-display);
+  font-size: 2.375rem;
+  font-style: italic;
+  font-weight: 500;
+  line-height: 1.1;
+  color: var(--inv-ink);
+}
+
+.inv-names {
+  font-family: var(--inv-display);
+  font-size: clamp(2.25rem, 11.5vw, 2.875rem);
+  font-weight: 500;
+  line-height: 1.05;
+  text-wrap: balance;
+  color: var(--inv-ink);
+}
+
+.inv-date {
+  font-family: var(--inv-display);
+  font-size: 1.375rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--inv-ink);
+}
+
+.inv-rule {
+  width: 5.5rem;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--inv-gold), transparent);
+}
+
+.inv-monogram {
+  position: relative;
+  flex-shrink: 0;
+  display: block;
+  width: 3.75em;
+  height: 3em;
+  font-family: var(--inv-display);
+  font-size: 1.5rem;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--inv-kicker);
+}
+
+.inv-monogram > span {
+  position: absolute;
+  font-size: 2.5em;
+}
+
+.inv-monogram > span:first-child {
+  top: 0;
+  left: 0.12em;
+}
+
+.inv-monogram > span:last-child {
+  right: 0.12em;
+  bottom: 0;
+}
+
+/* ---- Slides ---- */
+
+.inv-scroller {
+  position: absolute;
+  inset: 0;
+  overflow: hidden auto;
+  overscroll-behavior: contain;
+  scroll-snap-type: y proximity;
+  scroll-timeline: --inv-scroll y;
+  scrollbar-width: none;
+  outline: none;
+}
+
+.inv-scroller::-webkit-scrollbar {
+  display: none;
+}
+
+.inv-slide {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  padding: calc(1.5rem + env(safe-area-inset-top)) 1.125rem
+    calc(4.25rem + env(safe-area-inset-bottom));
+  scroll-snap-align: start;
+}
+
+.inv-scrub {
+  width: 100%;
+}
+
+/* The poster and the room fill the slide, so the carved frame meets the column's edges. */
+.inv-slide[data-dress='frame'],
+.inv-slide[data-dress='room'] {
+  align-items: stretch;
+  padding: 0;
+}
+
+.inv-slide[data-dress='frame'] .inv-scrub,
+.inv-slide[data-dress='room'] .inv-scrub {
+  display: flex;
+}
+
+.inv-hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.625rem;
+  padding-inline: 0.5rem;
+  text-align: center;
+}
+
+.inv-scroll-hint {
+  font-size: 0.75rem;
+  color: var(--inv-kicker);
+  animation: inv-hint 1.8s ease-in-out infinite;
+}
+
+/* Bounding box of the oval art; the photo sits just under its inner rim. */
+.inv-oval {
+  position: relative;
+  width: min(62vw, 38dvh, 19rem);
+  aspect-ratio: 860 / 1160;
+}
+
+.inv-oval-photo {
+  position: absolute;
+  top: 15.5%;
+  left: 15.2%;
+  width: 69.6%;
+  height: 69%;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--inv-sand);
+}
+
+.inv-oval-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.inv-oval-art {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 82% 60%;
+  transform: scale(1.9);
+  transform-origin: 82% 60%;
+}
+
+.inv-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  min-height: 22rem;
+  padding: 3.5rem 1.5rem 2.25rem;
+  text-align: center;
+  border: 1px solid var(--inv-gold);
+  border-radius: 11rem 11rem 1.25rem 1.25rem;
+  background: var(--inv-paper);
+  box-shadow:
+    0 0 0 4px var(--inv-paper),
+    0 0 0 5px var(--inv-gold-soft),
+    0 16px 36px rgb(74 51 36 / 18%);
+}
+
+.inv-slide-body {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  width: 100%;
+}
+
+.inv-dress-garland,
+.inv-dress-orchid,
+.inv-wreath {
+  pointer-events: none;
+}
+
+.inv-dress-garland,
+.inv-dress-orchid {
+  position: absolute;
+  z-index: 1;
+  display: block;
+}
+
+.inv-dress-garland img,
+.inv-dress-orchid img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.inv-dress-garland {
+  top: -1.25rem;
+  left: -1.125rem;
+  width: min(36%, 8.5rem);
+  transform-origin: 20% 0;
+}
+
+.inv-dress-orchid {
+  top: -1.25rem;
+  right: -1.125rem;
+  width: min(34%, 8rem);
+  transform-origin: 100% 0;
+}
+
+.inv-hero .inv-dress-garland,
+.inv-hero .inv-dress-orchid {
+  top: -1rem;
+}
+
+.inv-sway {
+  transform-origin: 30% 0;
+  animation: inv-sway 7s ease-in-out infinite;
+}
+
+.inv-wreath {
+  width: min(100%, 15rem);
+  height: auto;
+  margin-block: -1.75rem -0.5rem;
+}
+
+.inv-wreath-foot {
+  margin-block: 0.25rem -1rem;
+  scale: 1 -1;
+}
+
+/* Carved frame; content stays in the opening between its ornaments. */
+.inv-poster {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: max(17dvh, 5.5rem) 15% max(19dvh, 6rem);
+  text-align: center;
+}
+
+.inv-poster-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  pointer-events: none;
+}
+
+.inv-countdown {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.375rem;
+  width: 100%;
+}
+
+.inv-countdown > div {
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem 0;
+  border: 1px solid var(--inv-gold-soft);
+  border-radius: 0.75rem;
+  background: var(--inv-paper);
+}
+
+.inv-countdown dd {
+  font-family: var(--inv-display);
+  font-size: 1.625rem;
+  font-weight: 600;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--inv-ink);
+}
+
+.inv-countdown dt {
+  order: 1;
+  font-size: 0.68rem;
+  color: var(--inv-kicker);
+}
+
+/* Love story timeline. */
+.inv-timeline {
+  position: relative;
+  padding-inline-start: 1.5rem;
+  text-align: start;
+}
+
+.inv-timeline ol {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.inv-timeline-line {
+  position: absolute;
+  inset-block: 0.5rem;
+  inset-inline-start: 0.4375rem;
+  width: 1px;
+}
+
+.inv-timeline-line::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--inv-gold);
+}
+
+.inv-timeline li {
+  position: relative;
+}
+
+.inv-timeline li::before {
+  content: '';
+  position: absolute;
+  inset-block-start: 0.5rem;
+  inset-inline-start: -1.5rem;
+  width: 0.875rem;
+  height: 0.875rem;
+  border: 2px solid var(--inv-paper);
+  border-radius: 50%;
+  background: var(--inv-gold);
+  box-shadow: 0 0 0 1px var(--inv-gold);
+}
+
+/* ---- The doorway: the opening view and the closing slide ---- */
+
+.inv-room {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+.inv-room-frame {
+  position: absolute;
+  inset: 0 7%;
+  width: 86%;
+  height: 100%;
+  object-fit: fill;
+}
+
+.inv-room-garland,
+.inv-room-orchid,
+.inv-room-florals {
+  position: absolute;
+  display: block;
+  pointer-events: none;
+}
+
+.inv-room-garland img,
+.inv-room-orchid img,
+.inv-room-florals img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.inv-room-garland {
+  top: 6.5%;
+  left: 10%;
+  width: 29%;
+  transform-origin: 20% 0;
+}
+
+.inv-room-orchid {
+  top: 7.5%;
+  right: 9.5%;
+  width: 31%;
+  transform-origin: 100% 0;
+}
+
+.inv-room-florals {
+  right: 7%;
+  bottom: 0;
+  left: 7%;
+  transform-origin: 50% 100%;
+}
+
+.inv-room-copy {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 100%;
+  padding: max(19dvh, 5.5rem) 20% max(41dvh, 6rem);
+  text-align: center;
+}
+
+.inv-room-copy .inv-names {
+  font-size: clamp(1.875rem, 9.5vw, 2.5rem);
+}
+
+/* Without doors beside it the closing doorway takes the whole column. */
+.inv-scroller .inv-room-frame {
+  inset: 0;
+  width: 100%;
+}
+
+.inv-scroller .inv-room-garland {
+  left: 5%;
+  width: 31%;
+}
+
+.inv-scroller .inv-room-orchid {
+  right: 4.5%;
+  width: 33%;
+}
+
+.inv-scroller .inv-room-florals {
+  right: 0;
+  left: 0;
+}
+
+.inv-scroller .inv-room-copy {
+  padding-inline: 17%;
+}
+
+/* Reveal: armed only once scripts run, so nothing is ever hidden without them. */
+.inv-stage[data-armed] [data-reveal]:not([data-reveal='photo'], [data-reveal='grow'], [data-in]) {
+  opacity: 0;
+}
+
+.inv-stage[data-armed] [data-reveal='rise']:not([data-in]) {
+  transform: translateY(44px) scale(0.94);
+}
+
+.inv-stage[data-armed] [data-reveal='fade-up']:not([data-in]) {
+  transform: translateY(18px);
+}
+
+.inv-stage[data-armed] [data-reveal='pop']:not([data-in]) {
+  transform: scale(0.72);
+}
+
+.inv-stage[data-armed] [data-reveal='drape']:not([data-in]) {
+  transform: translate(-14%, -18%) rotate(-7deg);
+}
+
+.inv-stage[data-armed] [data-reveal='bloom']:not([data-in]) {
+  transform: scale(0.78);
+}
+
+/* Clip the content, not the observed element: a fully clipped target never intersects. */
+.inv-stage[data-armed] [data-reveal='photo']:not([data-in]) > * {
+  clip-path: inset(100% 0 0 0);
+}
+
+.inv-stage[data-armed] [data-reveal='grow']:not([data-in])::before {
+  clip-path: inset(0 0 100% 0);
+}
+
+[data-reveal][data-in],
+[data-reveal='photo'][data-in] > *,
+[data-reveal='grow'][data-in]::before {
+  transition:
+    opacity 0.7s ease-out var(--inv-delay, 0ms),
+    transform 0.9s var(--inv-ease) var(--inv-delay, 0ms),
+    clip-path 1.1s var(--inv-ease) var(--inv-delay, 0ms);
+}
+
+/* Browsers with scroll-driven animation also scrub between slides, in both directions. */
+@supports (animation-timeline: view()) {
+  .inv-scrub {
+    animation: inv-scrub linear both;
+    animation-timeline: view();
+  }
+
+  .inv-scene img {
+    animation: inv-drift linear both;
+    animation-timeline: --inv-scroll;
+  }
+}
+
+@keyframes inv-scrub {
+  from {
+    transform: translateY(28px) scale(0.95);
+  }
+
+  30%,
+  70% {
+    transform: none;
+  }
+
+  to {
+    transform: translateY(-20px) scale(0.96);
+  }
+}
+
+@keyframes inv-drift {
+  to {
+    transform: translateY(-10.7%);
+  }
+}
+
+@keyframes inv-hint {
+  50% {
+    transform: translateY(5px);
+  }
+}
+
+@keyframes inv-sway {
+  0%,
+  100% {
+    transform: rotate(-1.2deg);
+  }
+
+  50% {
+    transform: rotate(1.2deg);
+  }
+}
+
+/* ---- Opening ---- */
+
+.inv-cover {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  overflow: hidden;
+  background: var(--inv-cream);
+}
+
+.inv-doors {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  perspective: 1500px;
+  pointer-events: none;
+}
+
+/* The wood color stands in for a door image that has not arrived. */
+.inv-door {
+  position: absolute;
+  top: 0;
+  width: 50%;
+  height: 100%;
+  object-fit: cover;
+  background: var(--inv-wood);
+}
+
+.inv-door-left {
+  left: 0;
+  object-position: 100% 50%;
+  transform-origin: 0 50%;
+}
+
+.inv-door-right {
+  right: 0;
+  object-position: 0 50%;
+  transform-origin: 100% 50%;
+}
+
+.inv-cover-card {
+  position: absolute;
+  z-index: 3;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.375rem;
+  width: min(82%, 20rem);
+  max-height: calc(100% - 1.5rem);
+  padding: 1.5rem 1.25rem;
+  overflow-y: auto;
+  text-align: center;
+  translate: -50% -50%;
+  border: 1px solid var(--inv-gold);
+  border-radius: 1.25rem;
+  background: var(--inv-paper);
+  box-shadow:
+    0 0 0 4px var(--inv-paper),
+    0 0 0 5px var(--inv-gold-soft),
+    0 20px 44px rgb(44 28 18 / 45%);
+}
+
+.inv-cover-names {
+  font-family: var(--inv-display);
+  font-size: 2.5rem;
+  font-weight: 500;
+  line-height: 1.05;
+  text-wrap: balance;
+  color: var(--inv-ink);
+}
+
+.inv-cover-date {
+  color: var(--inv-kicker);
+}
+
+.inv-cover-to {
+  margin-top: 0.75rem;
+  font-size: 0.875rem;
+}
+
+.inv-cover-guest {
+  margin-bottom: 0.75rem;
+  font-family: var(--inv-display);
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--inv-ink);
+}
+
+/* Grows out of the doorway until it fills the column, then the hero shows through. */
+.inv-cover-oval {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  left: 50%;
+  width: 46%;
+  aspect-ratio: 3 / 4;
+  opacity: 0;
+  translate: -50% -50%;
+  pointer-events: none;
+  border-radius: 50%;
+  background: var(--inv-paper);
+  box-shadow: 0 0 0 3px var(--inv-gold-soft);
+}
+
+.inv-cover[data-phase='opening'] .inv-cover-card {
+  animation: inv-card-out 0.45s ease-in both;
+}
+
+.inv-cover[data-phase='opening'] .inv-door-left {
+  animation: inv-door-left 1.3s cubic-bezier(0.55, 0, 0.25, 1) 0.3s both;
+}
+
+.inv-cover[data-phase='opening'] .inv-door-right {
+  animation: inv-door-right 1.3s cubic-bezier(0.55, 0, 0.25, 1) 0.3s both;
+}
+
+.inv-cover[data-phase='opening'] .inv-cover-world {
+  animation: inv-world 1.6s var(--inv-ease) 0.3s both;
+}
+
+.inv-cover[data-phase='opening'] .inv-room-garland {
+  animation: inv-drape 1s var(--inv-ease) 1s both;
+}
+
+.inv-cover[data-phase='opening'] .inv-room-orchid {
+  animation: inv-bloom 1s var(--inv-ease) 1.15s both;
+}
+
+.inv-cover[data-phase='opening'] .inv-room-florals {
+  animation: inv-rise 1s var(--inv-ease) 1s both;
+}
+
+.inv-cover[data-phase='opening'] .inv-room-copy > * {
+  animation: inv-copy 0.7s var(--inv-ease) both;
+}
+
+.inv-cover[data-phase='opening'] .inv-room-copy > :nth-child(1) {
+  animation-delay: 1.7s;
+}
+
+.inv-cover[data-phase='opening'] .inv-room-copy > :nth-child(2) {
+  animation-delay: 1.9s;
+}
+
+.inv-cover[data-phase='opening'] .inv-room-copy > :nth-child(3) {
+  animation-delay: 2.1s;
+}
+
+.inv-cover[data-phase='opening'] .inv-room-copy > :nth-child(4) {
+  animation-delay: 2.3s;
+}
+
+.inv-cover[data-phase='opening'] .inv-room,
+.inv-cover[data-phase='opening'] .inv-doors {
+  animation: inv-through 0.8s ease-in 3.2s both;
+}
+
+.inv-cover[data-phase='opening'] .inv-cover-oval {
+  animation: inv-oval 0.85s ease-in 3.15s both;
+}
+
+.inv-cover[data-phase='opening'] {
+  animation: inv-cover-out 0.3s linear 4s both;
+}
+
+@keyframes inv-card-out {
+  to {
+    opacity: 0;
+    transform: translateY(-16px) scale(0.97);
+    visibility: hidden;
+  }
+}
+
+@keyframes inv-door-left {
+  to {
+    transform: rotateY(84deg);
+  }
+}
+
+@keyframes inv-door-right {
+  to {
+    transform: rotateY(-84deg);
+  }
+}
+
+@keyframes inv-world {
+  from {
+    transform: scale(1.08);
+  }
+
+  to {
+    transform: none;
+  }
+}
+
+@keyframes inv-drape {
+  from {
+    opacity: 0;
+    transform: translate(-16%, -20%) rotate(-8deg);
+  }
+}
+
+@keyframes inv-bloom {
+  from {
+    opacity: 0;
+    transform: scale(0.74);
+  }
+}
+
+@keyframes inv-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16%) scale(0.92);
+  }
+}
+
+@keyframes inv-copy {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+@keyframes inv-through {
+  to {
+    opacity: 0;
+    transform: scale(1.9);
+  }
+}
+
+@keyframes inv-oval {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+
+  25% {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(4.5);
+  }
+}
+
+@keyframes inv-cover-out {
+  to {
+    opacity: 0;
+  }
+}
+
+/* ---- Wide screens: the landscape and flowers fill the stage around the column. ---- */
+
+@media (width >= 40rem) {
+  .inv-backdrop {
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    display: block;
+    overflow: hidden;
+  }
+
+  .inv-backdrop > img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: 50% 78%;
+  }
+
+  .inv-backdrop::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgb(245 236 223 / 58%);
+  }
+
+  /* One half of the two-sided flower art per screen corner; hidden below on short screens. */
+  .inv-backdrop-florals {
+    position: absolute;
+    z-index: 1;
+    bottom: 0;
+    width: clamp(14rem, 27vw, 26rem);
+    aspect-ratio: 430 / 898;
+    overflow: hidden;
+  }
+
+  .inv-backdrop-florals img {
+    display: block;
+    width: 200%;
+    height: 100%;
+  }
+
+  .inv-backdrop-left {
+    left: 0;
+  }
+
+  .inv-backdrop-right {
+    right: 0;
+  }
+
+  .inv-backdrop-right img {
+    transform: translateX(-50%);
+  }
+
+  .inv-column {
+    box-shadow:
+      0 0 0 1px var(--inv-gold-soft),
+      0 0 0 6px var(--inv-paper),
+      0 0 0 7px var(--inv-gold),
+      0 0 48px rgb(74 51 36 / 22%);
+  }
+}
+
+/* A phone on its side has no room for the flowers: the doorway keeps only its text. */
+@media (height < 30rem) {
+  .inv-backdrop-florals,
+  .inv-room-garland,
+  .inv-room-orchid,
+  .inv-room-florals,
+  .inv-cover-card .inv-monogram {
+    display: none;
+  }
+
+  .inv-room-copy {
+    padding-block: 3.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .inv-stage[data-armed] [data-reveal]:not([data-in]) {
+    transform: none;
+    clip-path: none;
+  }
+
+  [data-reveal][data-in] {
+    transition: opacity 0.2s linear;
+  }
+
+  .inv-scrub,
+  .inv-scene img,
+  .inv-sway,
+  .inv-scroll-hint {
+    animation: none;
+  }
+
+  .inv-cover[data-phase='opening'],
+  .inv-cover[data-phase='opening'] * {
+    animation: none;
+  }
+
+  .inv-cover[data-phase='opening'] {
+    animation: inv-cover-out 0.3s linear both;
+  }
+}

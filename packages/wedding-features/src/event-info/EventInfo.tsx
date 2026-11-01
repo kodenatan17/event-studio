@@ -20,9 +20,12 @@ function sortedEvents(events: readonly WeddingEvent[]): WeddingEvent[] {
 export function EventList({
   events,
   highlightId,
+  variant = 'card',
 }: {
   events: readonly WeddingEvent[];
   highlightId?: string;
+  /** `arch`: centered entries for the 2D invitation's arch panel, rising in on scroll (D-036). */
+  variant?: 'card' | 'arch';
 }) {
   const highlightRef = useRef<HTMLLIElement>(null);
 
@@ -43,17 +46,26 @@ export function EventList({
         const range = formatEventRange(event.startsAt, event.endsAt, event.timezone);
         const mapsUrl = safeHttpsUrl(event.mapsUrl);
         const highlighted = event.id === highlightId;
+        const arch = variant === 'arch';
         return (
           <li
             key={event.id}
             ref={highlighted ? highlightRef : undefined}
             aria-current={highlighted ? 'true' : undefined}
             data-event-id={event.id}
-            className={`rounded-xl border bg-white/70 p-4 ${
-              highlighted ? 'border-[#7a4a2a] ring-2 ring-[#7a4a2a]' : 'border-[#e6d6c3]'
-            }`}
+            data-reveal={arch ? 'rise' : undefined}
+            className={
+              arch
+                ? 'border-t border-[#e6d6c3] pt-4 text-center first:border-t-0 first:pt-0'
+                : `rounded-xl border bg-white/70 p-4 ${
+                    highlighted ? 'border-[#7a4a2a] ring-2 ring-[#7a4a2a]' : 'border-[#e6d6c3]'
+                  }`
+            }
           >
-            <article aria-labelledby={`event-${event.id}-title`} className="flex flex-col gap-1">
+            <article
+              aria-labelledby={`event-${event.id}-title`}
+              className={`flex flex-col gap-1 ${arch ? 'items-center' : ''}`}
+            >
               <p className="text-xs font-semibold tracking-widest text-[#6a3d22] uppercase">
                 {KIND_LABELS[event.kind]}
               </p>
@@ -74,7 +86,7 @@ export function EventList({
                   href={mapsUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={buttonClassName('secondary', 'mt-2 self-start')}
+                  className={buttonClassName('secondary', `mt-2 ${arch ? '' : 'self-start'}`)}
                 >
                   Buka di Maps
                   <span className="sr-only"> (tab baru)</span>

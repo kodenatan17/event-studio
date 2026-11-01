@@ -1,6 +1,17 @@
 import { expect, test } from '@playwright/test';
 
 import { sceneControl } from './helpers';
+import type { Page } from '@playwright/test';
+
+/** The opening runs about 4.3 s (D-036), too close to the default 5 s under CI load. */
+const OPENING_TIMEOUT = { timeout: 10_000 };
+const INVITATION_ART = '**/templates/joglo/*/invitation/*.webp';
+
+/** Taps the doors open and waits until the cover has left the page (D-035). */
+async function openInvitation(page: Page) {
+  await page.getByRole('button', { name: 'Buka Undangan' }).click();
+  await expect(page.getByTestId('invitation-cover')).toHaveCount(0, OPENING_TIMEOUT);
+}
 
 test('E2E-10 WebGL disabled → 2D fallback with names, Akad Nikah, a chapter title, gallery fallback tiles, Khusus tamu undangan', async ({
   page,
@@ -89,6 +100,7 @@ test('[T-108] Mode 2D button switches a running 3D world to the 2D invitation', 
   ).toBe(true);
   const fallback = page.getByTestId('fallback-2d');
   await expect(fallback.getByRole('heading', { name: 'Akad Nikah' })).toBeVisible();
+  await openInvitation(page);
 
   // 2D gallery tiles open the same lightbox action.
   const gallery = fallback.getByRole('region', { name: 'Galeri Foto' });
@@ -123,4 +135,130 @@ test('[D-017] living-room GLB 404 → ERROR panel with Coba lagi and Mode 2D', a
   await expect(status).toHaveAttribute('data-world-status', 'READY', { timeout: 30_000 });
   await expect(status).toHaveAttribute('data-scene-id', 'living-room');
   expect(pageErrors).toEqual([]);
+});
+
+test('[D-035] cover → Buka Undangan → slides reveal with focus inside the invitation', async ({
+  page,
+}) => {
+  await page.goto('/w/demo-wedding?mode=2d');
+  const cover = page.getByTestId('invitation-cover');
+  await expect(cover).toHaveAttribute('data-phase', 'sealed');
+  await expect(page.getByRole('button', { name: 'Buka Undangan' })).toBeFocused();
+  await expect(cover).toContainText('Tamu Undangan');
+
+  // The slides stay out of keyboard reach until the doors are open.
+  const slides = page.getByTestId('invitation-slides');
+  await expect(slides).toHaveAttribute('inert', '');
+
+  await page.getByRole('button', { name: 'Buka Undangan' }).click();
+  await expect(cover).toHaveAttribute('data-phase', 'opening');
+  await expect(cover).toHaveCount(0, OPENING_TIMEOUT);
+  await expect(slides).not.toHaveAttribute('inert', '');
+  await expect(slides).toBeFocused();
+
+  const heading = page.getByRole('heading', { level: 1 });
+  await expect(heading).toHaveAttribute('data-in', '');
+  await expect(heading).toHaveCSS('opacity', '1');
+
+  // A later slide reveals as it scrolls in.
+  const gallery = page.getByRole('region', { name: 'Galeri Foto' });
+  const panel = gallery.locator('[data-reveal="rise"]');
+  await expect(panel).not.toHaveAttribute('data-in', '');
+  await gallery.scrollIntoViewIfNeeded();
+  await expect(panel).toHaveAttribute('data-in', '');
+});
+
+test('[D-035] a crashed 3D world goes straight to the invitation, without the cover', async ({
+  page,
+}) => {
+  await page.goto('/w/demo-wedding');
+  const status = page.getByTestId('world-status');
+  await expect(status).toHaveAttribute('data-world-status', 'READY', { timeout: 30_000 });
+  await page.evaluate(() => {
+    const canvas = document.querySelector('canvas');
+    const gl = canvas?.getContext('webgl2') ?? canvas?.getContext('webgl');
+    gl?.getExtension('WEBGL_lose_context')?.loseContext();
+  });
+  await expect(status).toHaveAttribute('data-world-status', 'FALLBACK_2D');
+  await expect(page.getByTestId('invitation-cover')).toHaveCount(0);
+  await expect(page.getByTestId('invitation-slides')).not.toHaveAttribute('inert', '');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveCSS('opacity', '1');
+});
+
+test('[D-035] Kembali ke 3D is reachable while the doors are closed', async ({ page }) => {
+  await page.goto('/w/demo-wedding?mode=2d');
+  await expect(page.getByTestId('invitation-cover')).toBeVisible();
+  await page.getByRole('button', { name: 'Kembali ke 3D' }).click();
+  await expect(page).toHaveURL(/\/w\/demo-wedding$/);
+});
+
+test('[D-035] reduced motion opens at once, without transforms', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/w/demo-wedding?mode=2d');
+  const started = Date.now();
+  await openInvitation(page);
+  expect(Date.now() - started).toBeLessThan(2000);
+  const heading = page.getByRole('heading', { level: 1 });
+  await expect(heading).toHaveCSS('opacity', '1');
+  await expect(heading).toHaveCSS('transform', 'none');
+});
+
+test('[D-036] the invitation still opens when every art file fails', async ({ page }) => {
+  await page.route(INVITATION_ART, (route) => route.fulfill({ status: 404 }));
+  await page.goto('/w/demo-wedding?mode=2d');
+  const cover = page.getByTestId('invitation-cover');
+  await expect(cover).toContainText('Natan & Nurul');
+  await expect(cover).toContainText('Tamu Undangan');
+  await openInvitation(page);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Natan & Nurul');
+  await expect(page.getByRole('heading', { name: 'Terima Kasih' })).toBeAttached();
+});
+
+test('[D-036] the art stays under 2 MB and the 3D world never fetches it', async ({ page }) => {
+  const responses: Promise<number>[] = [];
+  page.on('response', (response) => {
+    if (!response.url().includes('/invitation/')) return;
+    responses.push(response.body().then((body) => body.length));
+  });
+
+  await page.goto('/w/demo-wedding');
+  await expect(page.getByTestId('world-status')).toHaveAttribute('data-world-status', 'READY', {
+    timeout: 30_000,
+  });
+  expect(responses).toHaveLength(0);
+
+  await page.goto('/w/demo-wedding?mode=2d');
+  await openInvitation(page);
+  // Forces the lazy art of every slide.
+  await page.getByRole('heading', { name: 'Terima Kasih' }).scrollIntoViewIfNeeded();
+  await expect.poll(() => responses.length).toBeGreaterThanOrEqual(8);
+  const sizes = await Promise.all(responses);
+  expect(sizes.reduce((total, size) => total + size, 0)).toBeLessThan(2 * 1024 * 1024);
+});
+
+test('[D-036] on a phone on its side the closing text is clear of the flowers', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.goto('/w/demo-wedding?mode=2d');
+  await openInvitation(page);
+  const closing = page.getByRole('region', { name: 'Terima Kasih' });
+  await closing.scrollIntoViewIfNeeded();
+  await expect(closing.getByRole('heading', { name: 'Terima Kasih' })).toBeVisible();
+  await expect(closing.locator('.inv-room-florals')).toBeHidden();
+});
+
+test.describe('[D-035] without JavaScript', () => {
+  test.use({ javaScriptEnabled: false });
+
+  test('the cover is gone and every section is readable', async ({ page }) => {
+    await page.goto('/w/demo-wedding?mode=2d');
+    await expect(page.getByTestId('invitation-cover')).toBeHidden();
+    const fallback = page.getByTestId('fallback-2d');
+    await expect(fallback.getByRole('heading', { name: 'Akad Nikah' })).toHaveCSS('opacity', '1');
+    await expect(fallback.getByRole('heading', { name: 'Pertama Bertemu' })).toHaveCSS(
+      'opacity',
+      '1',
+    );
+  });
 });

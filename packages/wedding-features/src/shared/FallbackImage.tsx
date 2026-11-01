@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useState } from 'react';
+import type { ReactNode } from 'react';
 
 interface FallbackImageProps {
   src: string;
@@ -8,13 +9,21 @@ interface FallbackImageProps {
   /** Sizing classes shared by the image and its fallback tile. */
   className?: string;
   loading?: 'eager' | 'lazy';
+  /** Replaces the "Foto belum tersedia" tile, e.g. where an empty tile would be the first view. */
+  fallback?: ReactNode;
 }
 
 /**
  * Image with the designed "Foto belum tersedia" tile for missing or removed media (FR-02);
  * a failed image never breaks the overlay or the scene.
  */
-export function FallbackImage({ src, alt, className = '', loading = 'eager' }: FallbackImageProps) {
+export function FallbackImage({
+  src,
+  alt,
+  className = '',
+  loading = 'eager',
+  fallback,
+}: FallbackImageProps) {
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
 
   // Server-rendered images (2D mode) can fail before hydration attaches `onError`.
@@ -26,6 +35,7 @@ export function FallbackImage({ src, alt, className = '', loading = 'eager' }: F
   );
 
   if (failedSrc === src) {
+    if (fallback) return fallback;
     return (
       <div
         // Decorative images (`alt=""`, labelled by their control) stay hidden from AT.
