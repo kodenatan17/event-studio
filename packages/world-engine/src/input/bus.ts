@@ -17,6 +17,8 @@ export interface InputBus {
   readonly preview: { yaw: number; insetRight: number; insetBottom: number };
   /** Taps count as walks again after `until` (ms): the click that ends a pinch is not a walk. */
   readonly tapGuard: { until: number };
+  /** Character speech bubbles up in the scene; each character counts itself in and out. */
+  readonly speech: { active: number };
   /** Drops held keys, the stick, queued actions and the preview (transition, overlay, 2D). */
   reset(): void;
 }
@@ -31,6 +33,7 @@ export function createInputBus(): InputBus {
     actions: [],
     preview: { yaw: 0, insetRight: 0, insetBottom: 0 },
     tapGuard: { until: 0 },
+    speech: { active: 0 },
     reset() {
       bus.keys.clear();
       bus.joystick.x = 0;

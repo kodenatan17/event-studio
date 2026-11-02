@@ -1,3 +1,4 @@
+import type { AvatarAppearance } from '../avatar/appearance';
 import type { FigureOutfitId } from '../avatar/wardrobe';
 import type { Collider, Rect, Vec2 } from '../navigation/walk';
 
@@ -79,6 +80,22 @@ export type DecorItem =
       rotationY: number;
       /** Start of its idle cycle (0..1), so two figures never move in step. */
       phase: number;
+    }
+  | {
+      /** A guest-like character with random short lines (D-037); never interactive. */
+      type: 'npc';
+      nodeName: string;
+      look: AvatarAppearance;
+      /** One point stands; more walk this closed loop, authored clear of `colliders`. */
+      path: readonly Vec2[];
+      /** Floor height (default 0). */
+      y?: number;
+      rotationY?: number;
+      /** Start along the loop and of its lines (0..1), so characters never move in step. */
+      phase: number;
+      /** Walkers ranked below `RenderTier.maxWalkers` are not built. */
+      rank: number;
+      lines: readonly string[];
     }
   | { type: 'lanterns'; positions: readonly Vec2[] }
   | { type: 'mandala'; center: Vec2; radius: number }

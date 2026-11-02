@@ -1,5 +1,13 @@
+import type { AvatarAppearance, SlotChoice } from '../avatar/appearance';
+import type { BodyType, SkinToneId, Slot } from '../avatar/wardrobe';
 import type { Collider, Vec2 } from '../navigation/walk';
-import type { GltfLayout, PrimitiveLayout, SceneLayout, TemplateDefinition } from './types';
+import type {
+  DecorItem,
+  GltfLayout,
+  PrimitiveLayout,
+  SceneLayout,
+  TemplateDefinition,
+} from './types';
 
 /**
  * `blockout` template: procedural Javanese wedding courtyard (pelataran adat Jawa) built from
@@ -62,6 +70,116 @@ function ring(cx: number, cz: number, radius: number, count: number, phase = 0):
   });
 }
 
+type NpcItem = Extract<DecorItem, { type: 'npc' }>;
+
+function npcLook(
+  body: BodyType,
+  skin: SkinToneId,
+  slots: Partial<Record<Slot, SlotChoice>>,
+): AvatarAppearance {
+  return { v: 1, body, skin, slots };
+}
+
+const KEBAYA_JARIK: Partial<Record<Slot, SlotChoice>> = {
+  bottom: { item: 'jarik', variant: 'parang' },
+  shoes: { item: 'heels', variant: 'nude' },
+  earrings: { item: 'anting', variant: 'emas' },
+};
+const BESKAP_JARIK: Partial<Record<Slot, SlotChoice>> = {
+  bottom: { item: 'jarik', variant: 'parang' },
+  shoes: { item: 'selop', variant: 'hitam' },
+};
+
+/** Greeters and guests; all generated from the guest wardrobe, so they cost no new art. */
+const NPC_LOOKS = {
+  pagarAyu: npcLook('wanita', 'kuning', {
+    ...KEBAYA_JARIK,
+    hair: { item: 'sanggul-ukel' },
+    top: { item: 'kebaya-brokat', variant: 'marun' },
+  }),
+  kebayaHijau: npcLook('wanita', 'sawo-terang', {
+    ...KEBAYA_JARIK,
+    hair: { item: 'sanggul-cepol' },
+    top: { item: 'kebaya-kutubaru', variant: 'hijau' },
+  }),
+  kebayaBiru: npcLook('wanita', 'langsat', {
+    ...KEBAYA_JARIK,
+    hair: { item: 'hijab', variant: 'biru' },
+    top: { item: 'kebaya-kutubaru', variant: 'biru' },
+  }),
+  brokatPutih: npcLook('wanita', 'sawo-matang', {
+    ...KEBAYA_JARIK,
+    hair: { item: 'sanggul-tekuk' },
+    top: { item: 'kebaya-brokat', variant: 'putih' },
+  }),
+  beskapHitam: npcLook('pria', 'sawo-terang', {
+    ...BESKAP_JARIK,
+    hair: { item: 'rapi' },
+    headwear: { item: 'blangkon-solo', variant: 'sogan' },
+    top: { item: 'beskap', variant: 'hitam' },
+  }),
+  beskapKrem: npcLook('pria', 'kuning', {
+    ...BESKAP_JARIK,
+    hair: { item: 'belah-samping' },
+    top: { item: 'beskap', variant: 'krem' },
+  }),
+  batikNavy: npcLook('pria', 'sawo-matang', {
+    hair: { item: 'ikal' },
+    headwear: { item: 'peci', variant: 'hitam' },
+    top: { item: 'batik-panjang', variant: 'navy' },
+    bottom: { item: 'celana', variant: 'hitam' },
+    shoes: { item: 'loafer', variant: 'cokelat' },
+  }),
+} as const;
+
+/** Bubble lines stay general: every couple of this template shares them (D-037, D-029). */
+const GREETER_LINES = [
+  'Selamat datang!',
+  'Silakan masuk',
+  'Terima kasih sudah hadir',
+  'Mari, lewat sini',
+  'Senang Anda bisa datang',
+];
+const LIVING_LINES = [
+  'Fotonya cantik ya',
+  'Sudah baca kisah mereka?',
+  'Silakan melihat-lihat',
+  'Ruangannya indah sekali',
+  'Senang bertemu Anda',
+];
+const GARDEN_LINES = [
+  'Tamannya indah sekali',
+  'Selamat menikmati acaranya',
+  'Mari berfoto bersama',
+  'Bahagia sekali hari ini',
+  'Terima kasih sudah datang',
+];
+const HALL_LINES = [
+  'Silakan masuk ke pendopo',
+  'Selamat menikmati acaranya',
+  'Jangan lupa tulis ucapan ya',
+  'Doa terbaik untuk mempelai',
+  'Terima kasih sudah hadir',
+];
+
+function npcs(
+  prefix: string,
+  lines: readonly string[],
+  y: number,
+  walkers: readonly { look: AvatarAppearance; path: readonly Vec2[]; phase: number }[],
+): NpcItem[] {
+  return walkers.map(({ look, path, phase }, rank) => ({
+    type: 'npc',
+    nodeName: `${prefix}_${rank + 1}`,
+    look,
+    path,
+    y,
+    phase,
+    rank,
+    lines,
+  }));
+}
+
 const SKYLINE_TREES: Vec2[] = [
   ...ring(0, -6, 34, 22, 0.1),
   ...ring(0, -6, 27, 14, 0.35).filter(([, z]) => z < -12),
@@ -90,6 +208,8 @@ const entrance: PrimitiveLayout = {
     collider('GATE_PILLAR_RIGHT', 1.75, -4.6, 1.2, 1.2),
     collider('JANUR_LEFT', -2.2, -2.9, 0.5, 0.5),
     collider('JANUR_RIGHT', 2.2, -2.9, 0.5, 0.5),
+    collider('PAGAR_AYU_LEFT', -1.2, -2.8, 0.45, 0.45),
+    collider('PAGAR_AYU_RIGHT', 1.2, -2.8, 0.45, 0.45),
     collider('JANUR_LEFT_2', -2.5, 3, 0.5, 0.5),
     collider('JANUR_RIGHT_2', 2.5, 3, 0.5, 0.5),
     collider('WELCOME_SIGN', 3.2, -1.4, 1.6, 0.8),
@@ -127,6 +247,27 @@ const entrance: PrimitiveLayout = {
     { type: 'gapura', position: [0, 0, -4.6], doorWidth: 2.4, pillarWidth: 1.1, height: 3.4 },
     { type: 'janur', position: [-2.2, 0, -2.9], rotationY: 0 },
     { type: 'janur', position: [2.2, 0, -2.9], rotationY: Math.PI },
+    // Pagar ayu: two women greeting guests on either side of the path to the gate.
+    {
+      type: 'npc',
+      nodeName: 'PAGAR_AYU_LEFT',
+      look: NPC_LOOKS.pagarAyu,
+      path: [[-1.2, -2.8]],
+      rotationY: 0.35,
+      phase: 0,
+      rank: 0,
+      lines: GREETER_LINES,
+    },
+    {
+      type: 'npc',
+      nodeName: 'PAGAR_AYU_RIGHT',
+      look: NPC_LOOKS.pagarAyu,
+      path: [[1.2, -2.8]],
+      rotationY: -0.35,
+      phase: 0.45,
+      rank: 1,
+      lines: GREETER_LINES,
+    },
     { type: 'janur', position: [-2.5, 0, 3], rotationY: 0, scale: 0.85 },
     { type: 'janur', position: [2.5, 0, 3], rotationY: Math.PI, scale: 0.85 },
     { type: 'lanterns', positions: ENTRANCE_LANTERNS },
@@ -280,6 +421,34 @@ const livingRoom: GltfLayout = {
     { type: 'ground', material: 'grass', center: [0, -6], size: [90, 90], y: -0.02 },
     { type: 'ground', material: 'pavingDark', center: [0, 4], size: [34, 34], y: -0.012 },
     { type: 'trees', positions: SKYLINE_TREES },
+    ...npcs('NPC_LIVING', LIVING_LINES, 0.37, [
+      {
+        look: NPC_LOOKS.kebayaBiru,
+        phase: 0,
+        path: [
+          [-1.7, 1.7],
+          [-1.7, -1.4],
+          [1.7, -1.4],
+          [1.7, 1.7],
+        ],
+      },
+      {
+        look: NPC_LOOKS.beskapHitam,
+        phase: 0.55,
+        path: [
+          [-4.5, 3.4],
+          [1.5, 3.4],
+        ],
+      },
+      {
+        look: NPC_LOOKS.brokatPutih,
+        phase: 0.25,
+        path: [
+          [-3, -3.4],
+          [3, -3.4],
+        ],
+      },
+    ]),
   ],
 };
 
@@ -421,6 +590,46 @@ const weddingGarden: PrimitiveLayout = {
         [7.4, 11],
       ],
     },
+    ...npcs('NPC_GARDEN', GARDEN_LINES, 0, [
+      {
+        look: NPC_LOOKS.kebayaHijau,
+        phase: 0,
+        path: [
+          [0, 2.8],
+          [2.2, 0.6],
+          [0, -1.6],
+          [-2.2, 0.6],
+        ],
+      },
+      {
+        look: NPC_LOOKS.beskapKrem,
+        phase: 0.3,
+        path: [
+          [3.9, -1.6],
+          [5.8, -1.6],
+          [5.6, 1],
+          [3.9, 1.1],
+        ],
+      },
+      {
+        look: NPC_LOOKS.kebayaBiru,
+        phase: 0.6,
+        path: [
+          [-4, -2],
+          [-6.2, -1.4],
+          [-6.2, 0.9],
+          [-4, 1],
+        ],
+      },
+      {
+        look: NPC_LOOKS.batikNavy,
+        phase: 0.15,
+        path: [
+          [-3.2, 5.9],
+          [3.2, 5.9],
+        ],
+      },
+    ]),
     // Side gate back to the living room.
     {
       type: 'gapura',
@@ -577,6 +786,42 @@ const receptionHall: PrimitiveLayout = {
       ],
     },
     { type: 'trees', positions: SKYLINE_TREES },
+    ...npcs('NPC_HALL', HALL_LINES, 0, [
+      {
+        look: NPC_LOOKS.batikNavy,
+        phase: 0,
+        path: [
+          [-1.3, 3.2],
+          [-1.3, -2.8],
+          [1.3, -2.8],
+          [1.3, 3.2],
+        ],
+      },
+      {
+        look: NPC_LOOKS.brokatPutih,
+        phase: 0.35,
+        path: [
+          [6.5, -4.6],
+          [6.5, 4.4],
+        ],
+      },
+      {
+        look: NPC_LOOKS.kebayaHijau,
+        phase: 0.7,
+        path: [
+          [-6.5, -4.6],
+          [-6.5, 1],
+        ],
+      },
+      {
+        look: NPC_LOOKS.beskapKrem,
+        phase: 0.5,
+        path: [
+          [-2.6, 4.7],
+          [2.6, 4.7],
+        ],
+      },
+    ]),
   ],
 };
 

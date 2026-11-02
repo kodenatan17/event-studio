@@ -4,6 +4,7 @@ import type { DecorItem } from '../../templates/types';
 import { PALETTE } from '../materials';
 import { GardenDetails } from './GardenDetails';
 import { Figure } from './Figure';
+import { Npc } from './Npc';
 import { Flowers, Gentong, Janur, Lanterns, Mandala, Plumerias, Pond, TreeLine } from './nature';
 import { Part } from './Part';
 import { Chandelier, Drapes, Gapura, Gebyok, Joglo, RoundTables, Wall } from './structures';
@@ -53,6 +54,9 @@ export function Decor({ item, store, tier, reducedMotion }: DecorProps) {
       return <Janur {...item} />;
     case 'figure':
       return <Figure item={item} store={store} tier={tier} reducedMotion={reducedMotion} />;
+    case 'npc':
+      if (item.path.length > 1 && item.rank >= tier.maxWalkers) return null;
+      return <Npc item={item} store={store} tier={tier} reducedMotion={reducedMotion} />;
     case 'lanterns':
       return <Lanterns positions={item.positions} />;
     case 'mandala':

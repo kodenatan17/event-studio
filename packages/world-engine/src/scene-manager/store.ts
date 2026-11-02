@@ -72,8 +72,9 @@ export interface WorldStateData {
   glGeometries: number | null;
   /** `appearanceKey` of the character actually built in the scene; null while there is none. */
   characterKey: string | null;
-  /** Node names of the template figures standing in the scene (`data-couple`). */
+  /** Node names of the template figures standing in the scene (`data-couple`, `data-figures`). */
   figureNodes: readonly string[];
+  npcBubbles: number;
   /**
    * Keyboard/joystick/button input, mutated in place by input sources and read by the avatar
    * every frame. Never replace it through `set()` (no per-frame React renders).
@@ -114,6 +115,8 @@ export interface WorldActions {
   setGlGeometries(count: number): void;
   setCharacterKey(key: string | null): void;
   addFigure(nodeName: string): void;
+  /** Speech bubbles on show (`data-npc-bubbles`); written only when the count changes. */
+  setNpcBubbles(count: number): void;
   removeFigure(nodeName: string): void;
   setNearby(tag: InteractiveTag | null): void;
   setAvatarProbe(point: FloorPoint | null): void;
@@ -205,6 +208,7 @@ export function createWorldStore({
       glGeometries: null,
       characterKey: null,
       figureNodes: [],
+      npcBubbles: 0,
       input,
       nearby: null,
       avatarProbe: null,
@@ -377,6 +381,10 @@ export function createWorldStore({
         if (figureNodes.includes(nodeName)) {
           set({ figureNodes: figureNodes.filter((name) => name !== nodeName) });
         }
+      },
+
+      setNpcBubbles(npcBubbles) {
+        if (get().npcBubbles !== npcBubbles) set({ npcBubbles });
       },
 
       setGlGeometries(glGeometries) {

@@ -24,6 +24,8 @@ export function WorldStatus({ store, message }: WorldStatusProps) {
   const postFx = useWorldStore(store, (state) => state.postFx);
   const avatar = useWorldStore(store, (state) => appearanceKey(state.avatarAppearance));
   const avatarBuilt = useWorldStore(store, (state) => state.characterKey);
+  const figures = useWorldStore(store, (state) => state.figureNodes.length);
+  const npcBubbles = useWorldStore(store, (state) => state.npcBubbles);
   const couple = useWorldStore(
     store,
     (state) =>
@@ -47,6 +49,8 @@ export function WorldStatus({ store, message }: WorldStatusProps) {
       data-avatar={avatar}
       data-avatar-built={avatarBuilt ?? ''}
       data-couple={couple ? 'ready' : ''}
+      data-figures={figures}
+      data-npc-bubbles={npcBubbles}
     >
       {message}
     </div>

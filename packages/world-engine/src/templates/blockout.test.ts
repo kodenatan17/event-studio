@@ -1,11 +1,12 @@
 // Dev-only test code: the fake demo fixture is the reference manifest for the blockout template.
 import { demoWeddingManifest } from '@undangan/contracts/fixtures/demo-wedding';
+import { PerspectiveCamera, Vector3 } from 'three';
 import { describe, expect, it } from 'vitest';
 
 import { distanceToFootprint, footprintAabb, INTERACT_RADIUS } from '../interaction/nearby';
 import { portalNodeName, spawnNodeName } from '../interaction/registry';
 import { clampToFloor, isBlocked } from '../navigation/walk';
-import { framingFor } from '../renderer/FollowCamera';
+import { followPose, framingFor } from '../renderer/FollowCamera';
 import { MAX_CAMERA_ZOOM, MIN_CAMERA_ZOOM } from '../scene-manager/store';
 import { getSceneLayout } from './blockout';
 import type { SceneLayout } from './types';
@@ -79,6 +80,124 @@ describe('blockout template', () => {
         expect(cameraY, `${width}x${height} zoom ${zoom}`).toBeLessThan(roof.eaveHeight);
       }
     }
+  });
+
+  describe('[D-037] the portrait camera keeps the avatar in focus', () => {
+    const PORTRAITS = [
+      [322, 690],
+      [393, 742],
+    ] as const;
+
+    /** Where the avatar lands on screen: x in -1..1, and its height in pixels. */
+    function onScreen(layout: SceneLayout, width: number, height: number, x: number, z: number) {
+      return (zoom: number) => {
+        const { offset, lookHeight, lookAhead, fov = 45, maxHeight = Infinity } = layout.camera;
+        const aspect = width / height;
+        const framing = framingFor(aspect, height, fov);
+        const y = layout.kind === 'gltf' ? layout.floor.y : 0;
+        const avatar = new Vector3(x, y, z);
+        const position = new Vector3();
+        const look = new Vector3();
+        const { minX, maxX } = layout.floor;
+        followPose(position, look, avatar, { offset, lookHeight, lookAhead, maxHeight }, framing, {
+          aspect,
+          zoom,
+          focusCenterX: (minX + maxX) / 2,
+        });
+        const camera = new PerspectiveCamera(framing.fov, aspect, 0.1, 200);
+        camera.position.copy(position);
+        camera.lookAt(look);
+        camera.updateMatrixWorld();
+        const feet = avatar.clone().project(camera);
+        const head = avatar
+          .clone()
+          .setY(y + 1.7)
+          .project(camera);
+        return { x: feet.x, y: feet.y, pixels: ((head.y - feet.y) / 2) * height };
+      };
+    }
+
+    const SCENE_IDS = ['entrance', 'living-room', 'wedding-garden', 'reception-hall'];
+
+    it.each(SCENE_IDS)('%s: never drifts off the screen at the floor edges', (sceneId) => {
+      const layout = getSceneLayout(templateId, sceneId);
+      if (!layout) throw new Error(`${sceneId} has no layout`);
+      const { minX, maxX, minZ, maxZ } = layout.floor;
+      for (const [width, height] of PORTRAITS) {
+        for (const x of [minX + AVATAR_RADIUS, maxX - AVATAR_RADIUS]) {
+          for (const z of [minZ + AVATAR_RADIUS, maxZ - AVATAR_RADIUS]) {
+            for (const zoom of [MIN_CAMERA_ZOOM, 1, MAX_CAMERA_ZOOM]) {
+              const place = onScreen(layout, width, height, x, z)(zoom);
+              expect(Math.abs(place.x), `${width}x${height} ${x},${z} zoom ${zoom}`).toBeLessThan(
+                0.45,
+              );
+              expect(Math.abs(place.y), `${width}x${height} ${x},${z} zoom ${zoom}`).toBeLessThan(
+                0.75,
+              );
+            }
+          }
+        }
+      }
+    });
+
+    it.each(SCENE_IDS)('%s: the default view shows a large avatar', (sceneId) => {
+      const layout = getSceneLayout(templateId, sceneId);
+      if (!layout) throw new Error(`${sceneId} has no layout`);
+      const spawn = layout.spawnPoints.SPAWN_ENTRY ?? [0, 0];
+      const { pixels } = onScreen(layout, 393, 742, spawn[0], spawn[1])(1);
+      expect(pixels).toBeGreaterThanOrEqual(90);
+    });
+  });
+
+  describe('[D-037] template characters', () => {
+    const npcItems = (sceneId: string) => {
+      const layout = getSceneLayout(templateId, sceneId);
+      if (!layout) throw new Error(`${sceneId} has no layout`);
+      return layout.decor.flatMap((item) => (item.type === 'npc' ? [item] : []));
+    };
+
+    it('two greeters stand at the gate and every room has 3-4 walkers', () => {
+      const gate = npcItems('entrance');
+      expect(gate).toHaveLength(2);
+      expect(gate.every((npc) => npc.path.length === 1 && npc.look.body === 'wanita')).toBe(true);
+      for (const sceneId of ['living-room', 'wedding-garden', 'reception-hall']) {
+        const walkers = npcItems(sceneId);
+        expect(walkers.length).toBeGreaterThanOrEqual(3);
+        expect(walkers.length).toBeLessThanOrEqual(4);
+        expect(walkers.every((npc) => npc.path.length > 1)).toBe(true);
+      }
+    });
+
+    it.each(scenes.map((scene) => scene.id))(
+      '%s: routes stay on the floor and off colliders',
+      (sceneId) => {
+        const layout = getSceneLayout(templateId, sceneId);
+        if (!layout) throw new Error(`${sceneId} has no layout`);
+        for (const npc of npcItems(sceneId)) {
+          npc.path.forEach((from, index) => {
+            const to = npc.path[(index + 1) % npc.path.length] ?? from;
+            for (let t = 0; t <= 1; t += 0.02) {
+              const point = [
+                from[0] + (to[0] - from[0]) * t,
+                from[1] + (to[1] - from[1]) * t,
+              ] as const;
+              if (npc.path.length > 1) {
+                expect(isBlocked(point, layout.colliders, AVATAR_RADIUS), npc.nodeName).toBe(false);
+              }
+              expect(clampToFloor(point, layout.floor, AVATAR_RADIUS), npc.nodeName).toEqual(point);
+            }
+          });
+        }
+      },
+    );
+
+    it('every line fits a short bubble and no name is repeated', () => {
+      const all = ['entrance', 'living-room', 'wedding-garden', 'reception-hall'].flatMap(npcItems);
+      expect(new Set(all.map((npc) => npc.nodeName)).size).toBe(all.length);
+      for (const line of all.flatMap((npc) => npc.lines)) {
+        expect(line.length).toBeLessThanOrEqual(30);
+      }
+    });
   });
 
   it('[T-103] unknown template or scene has no layout', () => {
