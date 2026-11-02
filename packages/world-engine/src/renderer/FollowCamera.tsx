@@ -28,11 +28,17 @@ const FOLLOW_RATE = 4;
 const ARRIVAL_OFFSET = new Vector3(0, 1.5, 2.5);
 const BASE_FOV = 45;
 const MAX_PORTRAIT_FOV = 70;
-const LIFT_PER_PORTRAIT = 1.2;
+/** Portrait moves in on the avatar: a tall screen is narrow, so a distant figure is lost (D-037). */
+const CLOSE_IN_PER_PORTRAIT = 0.72;
+const LIFT_PER_PORTRAIT = 0.2;
+const LOOK_AHEAD_DROP_PER_PORTRAIT = 0.85;
 const CENTER_PULL_PER_PORTRAIT = 1.7;
 const MAX_CENTER_PULL = 0.9;
-/** The camera never leans further than this (m) from the avatar, so it stays in frame. */
 const MAX_LEAN = 4.5;
+/** The avatar stays within this share of the half-width from the screen center (D-037). */
+const SAFE_LEAN = 0.3;
+/** The part of the avatar the framing keeps in view (m above its feet). */
+const AVATAR_CHEST = 0.9;
 /** Landscape viewports shorter than this (px) are framed tighter: a phone on its side. */
 const SHORT_VIEWPORT = 620;
 const SHORT_RANGE = 220;
@@ -48,12 +54,13 @@ interface Framing {
   lift: number;
   /** Sideways: 0 = follow the avatar exactly, 1 = frame the floor center. */
   centerPull: number;
+  /** Multiplies the rig's `lookAhead`: looking far past the avatar drops it down the screen. */
+  lookAhead: number;
 }
 
 /**
- * Portrait phones widen the view, pull back, look down more steeply and lean sideways toward
- * the room center, so a narrow screen shows the room's key props instead of empty floor around an
- * avatar standing near a wall. Landscape keeps the plain follow view, except on a short viewport
+ * Portrait phones widen the view, move in on the avatar and lean a little toward the room center,
+ * so a narrow screen keeps the avatar large and shows the room's props behind it. Landscape keeps the plain follow view, except on a short viewport
  * (a phone on its side, a short browser window): the authored rig then leaves the room tiny and
  * the camera high, so it pulls in and flattens.
  */
@@ -65,6 +72,7 @@ export function framingFor(aspect: number, height: number, baseFov: number): Fra
       distance: 1 - SHORT_PULL * short,
       lift: 1 - SHORT_FLATTEN * short,
       centerPull: 0,
+      lookAhead: 1,
     };
   }
   const portrait = 1 - aspect;
@@ -72,10 +80,45 @@ export function framingFor(aspect: number, height: number, baseFov: number): Fra
   const fov = (2 * Math.atan(Math.tan(halfFov) / Math.pow(aspect, 0.75)) * 180) / Math.PI;
   return {
     fov: Math.min(MAX_PORTRAIT_FOV, fov),
-    distance: 1 + portrait * 0.7,
+    distance: 1 - portrait * CLOSE_IN_PER_PORTRAIT,
     lift: 1 + portrait * LIFT_PER_PORTRAIT,
     centerPull: Math.min(MAX_CENTER_PULL, portrait * CENTER_PULL_PER_PORTRAIT),
+    lookAhead: 1 - portrait * LOOK_AHEAD_DROP_PER_PORTRAIT,
   };
+}
+
+/** The framed part of a `CameraRig`: what a frame's camera pose depends on. */
+export interface FollowRig {
+  offset: Vec3;
+  lookHeight: number;
+  lookAhead: number;
+  maxHeight: number;
+}
+
+interface FollowView {
+  aspect: number;
+  /** Guest zoom: scales the authored distance. */
+  zoom: number;
+  /** Floor center x; `undefined` follows the avatar exactly. */
+  focusCenterX?: number;
+}
+
+/**
+ * Half the width the camera sees at the avatar's depth (m). Leaning moves camera and aim together,
+ * so it does not change this.
+ */
+function halfWidthAtAvatar(
+  rise: number,
+  back: number,
+  lookHeight: number,
+  lookAhead: number,
+  tanHalfWidth: number,
+): number {
+  const aimDown = rise - lookHeight;
+  const aimBack = back + lookAhead;
+  const length = Math.hypot(aimDown, aimBack) || 1;
+  const depth = ((rise - AVATAR_CHEST) * aimDown + back * aimBack) / length;
+  return depth * tanHalfWidth;
 }
 
 /** Avatar editor preview: margin around the figure, and what the camera aims at (m). */
@@ -107,7 +150,39 @@ function previewPosition(
   );
 }
 
-const lean = (value: number): number => Math.max(-MAX_LEAN, Math.min(MAX_LEAN, value));
+/**
+ * Camera position and aim for one frame, pure (`position`/`look` are written to). The lean toward
+ * the room center is capped by what the camera sees, not by a fixed distance: the view narrows on a
+ * tall screen and when zoomed in, and a fixed cap walked the avatar off the screen (D-037).
+ */
+export function followPose(
+  position: Vector3,
+  look: Vector3,
+  avatar: Vector3,
+  rig: FollowRig,
+  framing: Framing,
+  { aspect, zoom, focusCenterX }: FollowView,
+): void {
+  const distance = framing.distance * zoom;
+  const rise = Math.min(rig.offset[1] * distance * framing.lift, rig.maxHeight);
+  const back = rig.offset[2] * distance;
+  // Zooming in aims lower and nearer: a rig's high aim would tip the avatar off the screen's foot.
+  const aim = Math.min(1, framing.lookAhead * zoom);
+  const lookAhead = rig.lookAhead * aim;
+  const lookHeight = AVATAR_CHEST + (rig.lookHeight - AVATAR_CHEST) * aim;
+  const tanHalfWidth = Math.tan((framing.fov * Math.PI) / 360) * aspect;
+  const limit = Math.min(
+    MAX_LEAN,
+    SAFE_LEAN * halfWidthAtAvatar(rise, back, lookHeight, lookAhead, tanHalfWidth),
+  );
+  const lean =
+    focusCenterX === undefined
+      ? 0
+      : Math.max(-limit, Math.min(limit, (focusCenterX - avatar.x) * framing.centerPull));
+  const focusX = avatar.x + lean;
+  position.set(focusX + rig.offset[0] * distance, avatar.y + rise, avatar.z + back);
+  look.set(focusX, avatar.y + lookHeight, avatar.z - lookAhead);
+}
 
 /**
  * Fixed 3/4 elevated follow view (architecture.md §8.1). Each scene arrival eases in from
@@ -133,26 +208,23 @@ export function FollowCamera({
 
   useFrame(({ camera, size }, delta) => {
     const state = store.getState();
-    const framing = framingFor(size.width / Math.max(size.height, 1), size.height, baseFov);
+    const aspect = size.width / Math.max(size.height, 1);
+    const framing = framingFor(aspect, size.height, baseFov);
     const { fov } = framing;
-    // Guest zoom is the authored distance scaled by `cameraZoom` (already clamped by the store).
-    const distance = framing.distance * state.cameraZoom;
-    const { lift, centerPull } = framing;
     if (camera instanceof PerspectiveCamera && Math.abs(camera.fov - fov) > 0.01) {
       camera.fov = fov;
       camera.updateProjectionMatrix();
     }
     const avatar = target.current;
-    const focusX =
-      focusCenterX === undefined
-        ? avatar.x
-        : avatar.x + lean((focusCenterX - avatar.x) * centerPull);
-    desired.current.set(
-      focusX + offset[0] * distance,
-      avatar.y + Math.min(offset[1] * distance * lift, maxHeight),
-      avatar.z + offset[2] * distance,
+    // Guest zoom is the authored distance scaled by `cameraZoom` (already clamped by the store).
+    followPose(
+      desired.current,
+      lookTarget.current,
+      avatar,
+      { offset, lookHeight, lookAhead, maxHeight },
+      framing,
+      { aspect, zoom: state.cameraZoom, focusCenterX },
     );
-    lookTarget.current.set(focusX, avatar.y + lookHeight, avatar.z - lookAhead);
 
     const previewing = state.activeOverlay?.type === 'avatar_editor';
     const { preview } = state.input;

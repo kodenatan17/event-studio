@@ -4,7 +4,13 @@ import { framingFor } from './FollowCamera';
 
 describe('follow camera framing', () => {
   it('[D-033] a wide-but-short viewport pulls in and flattens; a tall one keeps the rig', () => {
-    expect(framingFor(1.6, 900, 45)).toEqual({ fov: 45, distance: 1, lift: 1, centerPull: 0 });
+    expect(framingFor(1.6, 900, 45)).toEqual({
+      fov: 45,
+      distance: 1,
+      lift: 1,
+      centerPull: 0,
+      lookAhead: 1,
+    });
     const short = framingFor(844 / 390, 390, 45);
     expect(short.distance).toBeLessThan(1);
     expect(short.lift).toBeLessThan(1);
@@ -25,12 +31,12 @@ describe('follow camera framing', () => {
     expect(framingFor(1.2, 510, 45)).toMatchObject({ distance: 0.875, lift: 0.85 });
   });
 
-  it('[D-033] portrait framing is unchanged', () => {
+  it('[D-037] portrait moves in on the avatar', () => {
     const portrait = framingFor(0.5, 900, 45);
-    // Pre-change portrait contract: distance 1 + (1 - aspect) * 0.7, lift 1.6, centerPull 0.85.
-    expect(portrait.distance).toBe(1.35);
-    expect(portrait.lift).toBe(1.6);
+    expect(portrait.distance).toBeCloseTo(0.64);
+    expect(portrait.lift).toBeCloseTo(1.1);
     expect(portrait.centerPull).toBe(0.85);
+    expect(portrait.lookAhead).toBeCloseTo(0.575);
     expect(portrait.fov).toBe(
       (2 * Math.atan(Math.tan((45 * Math.PI) / 360) / Math.pow(0.5, 0.75)) * 180) / Math.PI,
     );
