@@ -432,6 +432,8 @@ The palette `jawa-sunset` and lighting `warm-sunset` are hard-wired in the block
 ## D-029 — Unsourced Indonesian copy
 
 > **Added 2026-10-31 (D-035), 2D invitation:** Buka Undangan, Kepada Bapak/Ibu/Saudara/i, Tamu Undangan, Geser ke bawah, Save the Date, Menuju hari bahagia, Wedding Event, Momen kami, Love Story, Konfirmasi kehadiran, Ucapan dan doa, Terima Kasih, Sampai jumpa, the closing sentence, and the countdown units.
+>
+> **Added 2026-11-01 (D-037), character bubbles:** the `GREETER_LINES`, `LIVING_LINES`, `GARDEN_LINES` and `HALL_LINES` lists in `packages/world-engine/src/templates/blockout.ts`.
 
 **Status:** Open. Owner review, 2026-10-30.
 
@@ -573,3 +575,26 @@ Tests: `e2e/fallback.spec.ts`, `[T-108]` ×2 and `[D-017]` GLB 404 → ERROR pan
 **Spec impact:** none. `CLAUDE.md` puts AI-generated images out of V1 scope as a product feature; this art is static template art supplied by the owner.
 
 **Owner to confirm:** rights in the generated art (`docs/asset-register.md`), and the pagoda in the landscape, which reads as more Chinese than Javanese.
+
+---
+
+## D-037 — Portrait camera focuses on the avatar; greeters and walking characters
+
+**Status:** Accepted 2026-11-01 by owner instruction. Amends D-033 and D-034.
+
+**Context:** on phones the avatar vanished when walking sideways and looked small on arrival. At 393×742 with the avatar at the right floor edge it sat at x 1.19 of the half-screen in the living room (off screen) and 0.95 in the hall, and off screen in every room at full zoom. It was 45–49 px tall at the entrance and garden. Portrait leaned toward the floor center by up to a fixed 4.5 m, while the view there can be under 4 m wide each way. The owner also asked for two women greeting at the gate, and 3–4 walking characters with random welcome bubbles in the other three rooms. The spec has no characters like these.
+
+**Decision:**
+- Portrait only (`followPose`, `framingFor`): the lean is capped at 30% of the half-width the camera sees at the avatar, so it shrinks on zoom-in. The camera sits closer (distance 1 − 0.72 × (1 − aspect)), less steeply, and aims nearer, so the avatar is at least 90 px tall at 393×742 and stays within 0.45 of the half-width at all zooms. `cameraZoom` 1 stays the default, so saved preferences and Reset keep their meaning. Desktop at zoom 1 is unchanged.
+- Zooming in on any viewport aims lower, so a high rig aim cannot tip the avatar off the bottom of the screen.
+- A small marker over the avatar's head draws through the scene. Interior pillars and drapes can stand right in front of the camera, and the walls of these rooms are not cut away.
+- New `npc` decor: a template character built from the guest wardrobe, standing on a one-point path or walking a closed loop. Routes are hand-written and tested against the colliders. Two pagar ayu stand at the gate with colliders; the living room has 3 walkers, garden and hall 4.
+- Walkers stop and turn to a guest within 1.1 m. They never block the guest, so nobody can be trapped, which means the avatar can pass through one that has stopped.
+- Bubbles are scene sprites with template text, for characters within 9.5 m, at most two at once, and hidden while an overlay is open. They are decorative: nothing a guest needs is said only there. No couple names, so every couple of a template can share the lines.
+- `RenderTier.maxWalkers`: 4, or 2 on `low` quality (§12). Reduced motion stands walkers still and keeps the bubbles.
+
+**Test impact:** `[D-033] portrait framing is unchanged` becomes `[D-037] portrait moves in on the avatar` with the new values, because the framing changed on purpose.
+
+**Spec impact:** none to acceptance criteria. Not multiplayer or realtime chat, which stay out of V1 scope: the lines are fixed text. New copy is listed under D-029.
+
+**Owner to confirm:** the bubble lines, and whether walkers should block the avatar.
