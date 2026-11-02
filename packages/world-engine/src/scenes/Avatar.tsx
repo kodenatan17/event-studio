@@ -23,6 +23,9 @@ export const AVATAR_RADIUS = 0.3;
 const PROBE_INTERVAL = 0.25;
 const SHADOW_SCALE = 0.9;
 const PREVIEW_TURN_RATE = 14;
+/** Just over the head (m). */
+const GUEST_MARKER_HEIGHT = 2.05;
+const GUEST_MARKER_ORDER = 19;
 
 interface AvatarProps {
   store: WorldStore;
@@ -62,6 +65,7 @@ export function Avatar({
   const lift = useRef<Group>(null);
   const body = useRef<Group>(null);
   const shadow = useRef<Mesh>(null);
+  const guestMarker = useRef<Mesh>(null);
   const appearance = useWorldStore(store, (state) => state.avatarAppearance);
   const character = useCharacter(store, body, appearance, tier, reducedMotion);
   const motion = useRef<MotionState>({ position: spawn, yaw: 0, height: 0, verticalSpeed: 0 });
@@ -107,6 +111,7 @@ export function Avatar({
     // eases there and back, and walking keeps the facing `stepMotion` already damped.
     const previewing = state.activeOverlay?.type === 'avatar_editor';
     if (previewing) turning.current = true;
+    if (guestMarker.current) guestMarker.current.visible = !previewing;
     const facing = previewing
       ? Math.atan2(camera.position.x - x, camera.position.z - z) + input.preview.yaw
       : step.state.yaw;
@@ -161,6 +166,15 @@ export function Avatar({
       />
       <group ref={lift}>
         <group ref={body} />
+        <mesh
+          ref={guestMarker}
+          geometry={geometries.guestMarker}
+          material={extraMaterials.guestMarker}
+          position={[0, GUEST_MARKER_HEIGHT, 0]}
+          renderOrder={GUEST_MARKER_ORDER}
+          raycast={noRaycast}
+          dispose={null}
+        />
       </group>
     </group>
   );

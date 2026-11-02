@@ -6,6 +6,7 @@ import {
   CatmullRomCurve3,
   CircleGeometry,
   Color,
+  ConeGeometry,
   CylinderGeometry,
   DataTexture,
   DoubleSide,
@@ -129,6 +130,13 @@ export const extraMaterials = {
   mandalaC: lambert('#a8643f'),
   mandalaD: lambert('#f3e2c7'),
   marker: new MeshBasicMaterial({ color: '#fff3c4', transparent: true, opacity: 0.9 }),
+  /** Drawn over the scene, so a pillar near the camera never hides where the guest is. */
+  guestMarker: new MeshBasicMaterial({
+    color: '#ffd873',
+    transparent: true,
+    depthTest: false,
+    depthWrite: false,
+  }),
   treeline: new MeshLambertMaterial({ color: '#56703a' }),
   sky: new MeshBasicMaterial({ vertexColors: true, side: BackSide, fog: false, depthWrite: false }),
   /** Contact shadow under the avatar (no shadow maps, §12); scaled by the jump height. */
@@ -257,5 +265,6 @@ export const geometries = {
   janurPole: new TubeGeometry(janurCurve, 24, 0.06, 6, false),
   drape: new LatheGeometry(drapeProfile, 14, -Math.PI / 2, Math.PI),
   marker: flat(new RingGeometry(0.2, 0.32, 32)),
+  guestMarker: new ConeGeometry(0.1, 0.18, 16).rotateX(Math.PI),
   sky: skyDome(),
 } as const;
