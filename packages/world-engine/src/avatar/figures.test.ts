@@ -2,7 +2,7 @@ import { AnimationMixer, Quaternion, SkinnedMesh, Texture } from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { isBlocked } from '../navigation/walk';
-import type { RenderTier } from '../renderer/capabilities';
+import type { CharacterTier } from '../renderer/capabilities';
 import { noRaycast } from '../scenes/input';
 import { getSceneLayout } from '../templates/blockout';
 import type { DecorItem, PrimitiveLayout } from '../templates/types';
@@ -18,11 +18,11 @@ import { createCharacterTextures } from './textures';
 import { FIGURE_OUTFITS, wardrobeItem, wardrobeItems } from './wardrobe';
 import type { FigureOutfitId } from './wardrobe';
 
-const HIGH: RenderTier = { bloom: true, physicalMaterials: true, textureSize: 512 };
-const BASE: RenderTier = { bloom: false, physicalMaterials: false, textureSize: 256 };
+const HIGH: CharacterTier = { bloom: true, physicalMaterials: true, textureSize: 512 };
+const BASE: CharacterTier = { bloom: false, physicalMaterials: false, textureSize: 256 };
 const IDS = Object.keys(FIGURE_OUTFITS) as FigureOutfitId[];
 
-function build(id: FigureOutfitId, tier: RenderTier = HIGH): CharacterKit {
+function build(id: FigureOutfitId, tier: CharacterTier = HIGH): CharacterKit {
   const materials = createCharacterMaterials(
     createCharacterTextures({ create: () => new Texture() }),
   );

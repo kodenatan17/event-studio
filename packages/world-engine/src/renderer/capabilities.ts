@@ -59,13 +59,19 @@ export function usePointerCoarse(): boolean {
 }
 
 /** What the renderer may afford (architecture.md §12 quality tiers). */
-export interface RenderTier {
+/** The part of a tier that decides how a character looks. */
+export interface CharacterTier {
   /** UnrealBloom post-processing. */
   bloom: boolean;
   /** MeshPhysical materials (sheen, clearcoat) instead of MeshStandard. */
   physicalMaterials: boolean;
   /** Generated texture size (px). */
   textureSize: 256 | 512;
+}
+
+export interface RenderTier extends CharacterTier {
+  /** Walking characters per scene; `low` fields fewer of them (architecture.md §12). */
+  maxWalkers: number;
 }
 
 export interface RenderTierInput {
@@ -75,6 +81,9 @@ export interface RenderTierInput {
   /** SwiftShader/llvmpipe: too slow for post-processing unless quality is forced `high`. */
   softwareRenderer: boolean;
 }
+
+const MAX_WALKERS = 4;
+const LOW_MAX_WALKERS = 2;
 
 /**
  * Bloom only on capable desktops: never on `low`, touch-first devices or reduced motion, and on a
@@ -92,6 +101,7 @@ export function resolveRenderTier({
     bloom: capable && !reducedMotion,
     physicalMaterials: capable,
     textureSize: capable ? 512 : 256,
+    maxWalkers: quality === 'low' ? LOW_MAX_WALKERS : MAX_WALKERS,
   };
 }
 

@@ -8,14 +8,14 @@ import {
 } from 'three';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { RenderTier } from '../renderer/capabilities';
+import type { CharacterTier } from '../renderer/capabilities';
 import { createCharacterMaterials, materialKey } from './materials';
 import type { MaterialKind, MaterialSpec } from './materials';
 import { createCharacterTextures } from './textures';
 import type { DrawRoutine, TextureProvider } from './textures';
 
-const HIGH: RenderTier = { bloom: true, physicalMaterials: true, textureSize: 512 };
-const BASE: RenderTier = { bloom: false, physicalMaterials: false, textureSize: 256 };
+const HIGH: CharacterTier = { bloom: true, physicalMaterials: true, textureSize: 512 };
+const BASE: CharacterTier = { bloom: false, physicalMaterials: false, textureSize: 256 };
 
 /** Canvas 2D stand-in: records every call and assignment, so drawings can be compared in Node. */
 function recordingContext(log: string[]): CanvasRenderingContext2D {

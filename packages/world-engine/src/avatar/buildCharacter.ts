@@ -2,7 +2,7 @@ import { Matrix4, SkinnedMesh } from 'three';
 import type { BufferGeometry, Group, Material, Skeleton } from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
-import type { RenderTier } from '../renderer/capabilities';
+import type { CharacterTier } from '../renderer/capabilities';
 import { noRaycast } from '../scenes/input';
 import { visibleItems } from './appearance';
 import type { AvatarAppearance } from './appearance';
@@ -60,7 +60,7 @@ export interface CharacterKit {
 }
 
 export interface BuildOptions {
-  tier: RenderTier;
+  tier: CharacterTier;
   /** Shared by default; tests inject one over a stub texture provider. */
   materials?: CharacterMaterials;
 }

@@ -2,7 +2,7 @@ import { AnimationMixer, Bone, Group, SkinnedMesh, Texture } from 'three';
 import type { Material } from 'three';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { RenderTier } from '../renderer/capabilities';
+import type { CharacterTier } from '../renderer/capabilities';
 import { seeded } from '../scenes/decor/Part';
 import { noRaycast } from '../scenes/input';
 import { defaultAppearance, randomAppearance, withSlot } from './appearance';
@@ -19,13 +19,13 @@ import type { TextureProvider } from './textures';
 import { createCharacterSlot } from './useCharacter';
 import { WARDROBE } from './wardrobe';
 
-const HIGH: RenderTier = { bloom: true, physicalMaterials: true, textureSize: 512 };
-const BASE: RenderTier = { bloom: false, physicalMaterials: false, textureSize: 256 };
+const HIGH: CharacterTier = { bloom: true, physicalMaterials: true, textureSize: 512 };
+const BASE: CharacterTier = { bloom: false, physicalMaterials: false, textureSize: 256 };
 
 /** Node has no canvas: textures are empty, the draw routines are tested in `materials.test.ts`. */
 const provider: TextureProvider = { create: () => new Texture() };
 
-function setup(tier: RenderTier = HIGH) {
+function setup(tier: CharacterTier = HIGH) {
   const materials = createCharacterMaterials(createCharacterTextures(provider));
   return {
     materials,

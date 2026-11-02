@@ -7,7 +7,7 @@ import {
 } from 'three';
 import type { Material, MeshStandardMaterialParameters, Texture } from 'three';
 
-import type { RenderTier } from '../renderer/capabilities';
+import type { CharacterTier } from '../renderer/capabilities';
 import { registerGlowMaterial, unregisterGlowMaterial } from '../renderer/glow';
 import type { CharacterTextures, EmbroideryKind } from './textures';
 import type { BatikPattern } from './wardrobe';
@@ -42,14 +42,14 @@ const isEmbroidery = (pattern: MaterialSpec['pattern']): pattern is EmbroideryKi
   pattern === 'beskap' || pattern === 'kebaya';
 
 /** `kind:colour|pattern:tier`. Tier: `high` (physical) or `base` (coarse, low, software). */
-export function materialKey(spec: MaterialSpec, tier: RenderTier): string {
+export function materialKey(spec: MaterialSpec, tier: CharacterTier): string {
   const look = `${spec.colour ?? ''}|${spec.pattern ?? ''}`;
   return `${spec.kind}:${look}:${tier.physicalMaterials ? 'high' : 'base'}`;
 }
 
 /** Physical only where the tier allows it; the base tier keeps the maps and drops the layers. */
 function surface(
-  tier: RenderTier,
+  tier: CharacterTier,
   shared: MeshStandardMaterialParameters,
   physical: ConstructorParameters<typeof MeshPhysicalMaterial>[0] = {},
 ): MeshStandardMaterial {
@@ -59,7 +59,7 @@ function surface(
     : new MeshStandardMaterial(parameters);
 }
 
-function build(spec: MaterialSpec, tier: RenderTier, textures: CharacterTextures): Material {
+function build(spec: MaterialSpec, tier: CharacterTier, textures: CharacterTextures): Material {
   const { kind, pattern } = spec;
   const colour = spec.colour ?? WHITE;
   const size = tier.textureSize;
@@ -147,7 +147,7 @@ function texturesOf(material: Material): Texture[] {
 }
 
 export interface CharacterMaterials {
-  get(spec: MaterialSpec, tier: RenderTier): Material;
+  get(spec: MaterialSpec, tier: CharacterTier): Material;
   retain(material: Material): void;
   /** The last release frees the program and GPU textures; the material stays cached. */
   release(material: Material): void;

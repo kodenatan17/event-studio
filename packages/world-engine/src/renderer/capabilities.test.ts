@@ -29,18 +29,24 @@ describe('render tier', () => {
       bloom: true,
       physicalMaterials: true,
       textureSize: 512,
+      maxWalkers: 4,
     });
-    expect(resolveRenderTier({ ...desktop, quality: 'low' }).bloom).toBe(false);
+    expect(resolveRenderTier({ ...desktop, quality: 'low' })).toMatchObject({
+      bloom: false,
+      maxWalkers: 2,
+    });
     expect(resolveRenderTier({ ...desktop, coarsePointer: true })).toEqual({
       bloom: false,
       physicalMaterials: false,
       textureSize: 256,
+      maxWalkers: 4,
     });
     // Reduced motion turns bloom off but keeps the material tier.
     expect(resolveRenderTier({ ...desktop, reducedMotion: true })).toEqual({
       bloom: false,
       physicalMaterials: true,
       textureSize: 512,
+      maxWalkers: 4,
     });
     expect(resolveRenderTier({ ...desktop, softwareRenderer: true }).bloom).toBe(false);
     expect(resolveRenderTier({ ...desktop, softwareRenderer: true, quality: 'high' }).bloom).toBe(
